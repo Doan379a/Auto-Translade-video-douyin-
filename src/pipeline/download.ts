@@ -27,6 +27,12 @@ export async function downloadVideo(url: string, workDir: string): Promise<strin
   fs.mkdirSync(workDir, { recursive: true });
   const dest = path.join(workDir, "source.mp4");
 
+  // Da tai roi -> dung lai (resumable)
+  if (fs.existsSync(dest) && fs.statSync(dest).size > 10_000) {
+    log.ok(`Dung lai video da tai: ${dest}`);
+    return dest;
+  }
+
   // Cach 1: lay link no-watermark qua API roi tai truc tiep
   try {
     log.step("Lay link tai qua API...");

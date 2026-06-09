@@ -1,10 +1,10 @@
 // Tien ich ffmpeg/ffprobe: lay duong dan binary (tu npm, cross-platform) va
 // ham chay command tra ve Promise.
 import { spawn } from "node:child_process";
-import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
+import ffmpegStatic from "ffmpeg-static";
 import ffprobeInstaller from "@ffprobe-installer/ffprobe";
 
-export const FFMPEG = ffmpegInstaller.path;
+export const FFMPEG = ffmpegStatic as unknown as string;
 export const FFPROBE = ffprobeInstaller.path;
 
 export function run(

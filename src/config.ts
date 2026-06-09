@@ -30,7 +30,7 @@ export function ensureDirs(): void {
 // --- Validate + parse bien moi truong ---
 const EnvSchema = z.object({
   DOUYIN_API_BASE: z.string().url().default("https://douyin.wtf"),
-  TRANSLATE_ENGINE: z.enum(["ollama", "openai"]).default("ollama"),
+  TRANSLATE_ENGINE: z.enum(["free", "ollama", "openai"]).default("ollama"),
   OLLAMA_HOST: z.string().url().default("http://127.0.0.1:11434"),
   OLLAMA_MODEL: z.string().default("qwen2.5:7b"),
   OPENAI_API_KEY: z.string().optional(),

@@ -16,6 +16,21 @@ function langLabel(code: string): string {
   return LANG_LABEL[code] ?? code;
 }
 
+// Engine "free": Google dich cong khai, khong can key/cai dat. Dich 1 doan.
+// Don gian, hop demo; do tin cay thap hon Ollama/OpenAI (co the bi rate-limit).
+async function translateFree(text: string): Promise<string> {
+  const url =
+    `https://translate.googleapis.com/translate_a/single?client=gtx` +
+    `&sl=${CONFIG.SOURCE_LANG}&tl=${CONFIG.TARGET_LANG}&dt=t&q=${encodeURIComponent(text)}`;
+  const res = await fetch(url, {
+    headers: { "user-agent": "Mozilla/5.0" },
+  });
+  if (!res.ok) throw new Error(`Google translate HTTP ${res.status}`);
+  const data: any = await res.json();
+  // data[0] = [[transChunk, origChunk, ...], ...] -> noi cac chunk dich lai
+  return (data?.[0] ?? []).map((c: any) => c?.[0] ?? "").join("").trim();
+}
+
 // Goi 1 LLM (chat) tra ve text, theo engine cau hinh.
 async function callLLM(system: string, user: string): Promise<string> {
   if (CONFIG.TRANSLATE_ENGINE === "ollama") {
@@ -73,6 +88,20 @@ export async function translateSegments(segments: Segment[]): Promise<Segment[]>
       CONFIG.TARGET_LANG
     )} (${CONFIG.TRANSLATE_ENGINE})...`
   );
+
+  // Engine "free": dich tung doan qua Google (khong can cai dat).
+  if (CONFIG.TRANSLATE_ENGINE === "free") {
+    for (let i = 0; i < segments.length; i++) {
+      try {
+        segments[i].translated = await translateFree(segments[i].text);
+      } catch (e) {
+        log.warn(`Doan ${i + 1} dich loi (${(e as Error).message}), giu nguyen goc`);
+        segments[i].translated = segments[i].text;
+      }
+    }
+    log.ok("Dich xong (free)");
+    return segments;
+  }
 
   const system = `Ban la dich gia. Dich tung dong tu ${langLabel(
     CONFIG.SOURCE_LANG
