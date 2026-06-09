@@ -103,38 +103,37 @@ export async function translateSegments(segments: Segment[]): Promise<Segment[]>
     return segments;
   }
 
-  const system = `Ban la dich gia. Dich tung dong tu ${langLabel(
-    CONFIG.SOURCE_LANG
-  )} sang ${langLabel(
-    CONFIG.TARGET_LANG
-  )}. Moi dong co dang [[so]] noi dung. Tra ve DUNG cung so dong, giu nguyen dau [[so]], chi thay noi dung bang ban dich. Khong them giai thich.`;
+  // Prompt tieng Anh (model bam sat hon), ep dau ra CHI tieng dich.
+  const src = langLabel(CONFIG.SOURCE_LANG);
+  const tgt = langLabel(CONFIG.TARGET_LANG);
+  const system =
+    `You are a professional short-video subtitle translator. ` +
+    `Translate each numbered line from ${src} into natural, colloquial ${tgt} ` +
+    `(use correct ${tgt} diacritics). Output exactly one line per input in the ` +
+    `format [[n]] <translation>, keeping the [[n]] markers in order. ` +
+    `Output ONLY ${tgt}. Never output ${src} characters or any other language. No notes.`;
 
-  const user = segments.map((s, i) => `[[${i + 1}]] ${s.text}`).join("\n");
-
-  try {
-    const raw = await callLLM(system, user);
-    const map = new Map<number, string>();
-    for (const line of raw.split("\n")) {
-      const m = line.match(/^\s*\[\[(\d+)\]\]\s*(.*)$/);
-      if (m) map.set(Number(m[1]), m[2].trim());
+  // Chia lo nho ~12 dong de model giu mach va khong lan ngon ngu.
+  const CHUNK = 12;
+  for (let start = 0; start < segments.length; start += CHUNK) {
+    const chunk = segments.slice(start, start + CHUNK);
+    const user = chunk.map((s, i) => `[[${i + 1}]] ${s.text}`).join("\n");
+    try {
+      const raw = await callLLM(system, user);
+      const map = new Map<number, string>();
+      for (const line of raw.split("\n")) {
+        const m = line.match(/^\s*\[\[(\d+)\]\]\s*(.*)$/);
+        if (m) map.set(Number(m[1]), m[2].trim());
+      }
+      for (let i = 0; i < chunk.length; i++) {
+        chunk[i].translated = map.get(i + 1) || (await translateOne(chunk[i].text));
+      }
+    } catch (e) {
+      log.warn(`Lo ${start}-${start + chunk.length} loi (${(e as Error).message}), dich tung doan...`);
+      for (const s of chunk) s.translated = await translateOne(s.text);
     }
-    // Neu khop du, dung luon
-    if (map.size >= segments.length) {
-      segments.forEach((s, i) => (s.translated = map.get(i + 1) ?? s.text));
-      log.ok("Dich xong (batch)");
-      return segments;
-    }
-    log.warn(
-      `Batch chi khop ${map.size}/${segments.length} dong, dich lai tung doan...`
-    );
-  } catch (e) {
-    log.warn(`Batch loi (${(e as Error).message}), dich tung doan...`);
+    log.step(`Dich ${Math.min(start + CHUNK, segments.length)}/${segments.length}`);
   }
-
-  // Fallback: dich tung doan cho chac
-  for (const s of segments) {
-    s.translated = await translateOne(s.text);
-  }
-  log.ok("Dich xong (tung doan)");
+  log.ok("Dich xong");
   return segments;
 }

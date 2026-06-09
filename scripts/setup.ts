@@ -95,6 +95,9 @@ async function main(): Promise<void> {
   if (CONFIG.TRANSLATE_ENGINE === "ollama") {
     console.log(`• Dich dung Ollama: cai app o https://ollama.com roi chay:`);
     console.log(`    ollama pull ${CONFIG.OLLAMA_MODEL}`);
+    console.log(`  (aya-expanse:8b dich Trung->Viet sach & tu nhien - khuyen dung)`);
+  } else if (CONFIG.TRANSLATE_ENGINE === "free") {
+    console.log("• Dich dung engine 'free' (Google) - khong can cai gi them.");
   } else {
     console.log("• Dich dung OpenAI: dien OPENAI_API_KEY vao .env");
   }

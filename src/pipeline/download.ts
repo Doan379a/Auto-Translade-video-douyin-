@@ -4,6 +4,7 @@ import path from "node:path";
 import { pipeline as streamPipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
 import { youtubeDl as ytdl } from "youtube-dl-exec";
+import { CONFIG } from "../config.js";
 import { log } from "../util/log.js";
 import { getVideoData, extractDownloadUrl } from "../trends/douyinApi.js";
 
@@ -48,15 +49,34 @@ export async function downloadVideo(url: string, workDir: string): Promise<strin
     log.warn(`Cach API loi (${(e as Error).message}), thu yt-dlp...`);
   }
 
-  // Cach 2: fallback yt-dlp
+  // Cach 2: fallback yt-dlp (co the lay cookies tu trinh duyet de qua chan Douyin)
   log.step("Tai bang yt-dlp...");
-  await ytdl(url, {
+  const opts: Record<string, unknown> = {
     output: dest,
     format: "mp4",
     noWarnings: true,
     noCheckCertificates: true,
-  } as any);
-  if (!fs.existsSync(dest)) throw new Error("yt-dlp khong tao ra file output");
-  log.ok(`Tai xong (yt-dlp): ${dest}`);
-  return dest;
+  };
+  if (CONFIG.YTDLP_COOKIES_FROM_BROWSER) {
+    opts.cookiesFromBrowser = CONFIG.YTDLP_COOKIES_FROM_BROWSER;
+    log.info(`yt-dlp dung cookies tu: ${CONFIG.YTDLP_COOKIES_FROM_BROWSER}`);
+  }
+  let lastErr: Error | null = null;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      await ytdl(url, opts as any);
+      if (fs.existsSync(dest)) {
+        log.ok(`Tai xong (yt-dlp): ${dest}`);
+        return dest;
+      }
+    } catch (e) {
+      lastErr = e as Error;
+      log.warn(`yt-dlp lan ${attempt} loi: ${lastErr.message.split("\n")[0]}`);
+    }
+  }
+  throw new Error(
+    `Khong tai duoc video. ${lastErr?.message.split("\n")[0] ?? ""}\n` +
+      `Goi y: dat YTDLP_COOKIES_FROM_BROWSER=chrome (hoac edge) trong .env, ` +
+      `hoac self-host API Douyin va dien DOUYIN_API_BASE.`
+  );
 }

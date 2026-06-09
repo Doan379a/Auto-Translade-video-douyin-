@@ -1,10 +1,27 @@
 // Client cap thap goi Evil0ctal Douyin API (douyin.wtf hoac self-host).
 // Chuan hoa response ve kieu noi bo, phong thu voi nhieu dang JSON khac nhau.
-import { CONFIG } from "../config.js";
+import { DOUYIN_API_BASES } from "../config.js";
 import { getJson } from "../util/http.js";
+import { log } from "../util/log.js";
 import type { TrendVideo } from "./types.js";
 
-const BASE = CONFIG.DOUYIN_API_BASE;
+// Thu lan luot cac API base, tra ve ket qua dau tien thanh cong (fallback).
+async function tryBases<T = any>(
+  pathname: string,
+  params: Record<string, string | number | boolean> = {},
+  timeoutMs = 30000
+): Promise<T> {
+  let lastErr: Error | null = null;
+  for (const base of DOUYIN_API_BASES) {
+    try {
+      return await getJson<T>(base, pathname, params, timeoutMs);
+    } catch (e) {
+      lastErr = e as Error;
+      if (DOUYIN_API_BASES.length > 1) log.warn(`API ${base} loi: ${lastErr.message}`);
+    }
+  }
+  throw lastErr ?? new Error("Khong co API base nao kha dung");
+}
 
 function num(v: unknown): number {
   const n = Number(v);
@@ -47,7 +64,7 @@ export function normalizeAweme(aweme: any, source: string): TrendVideo | null {
 
 // Lay sec_user_id tu link trang ca nhan Douyin (vd https://www.douyin.com/user/MS4w...)
 export async function getSecUserId(profileUrl: string): Promise<string> {
-  const res = await getJson<any>(BASE, "/api/douyin/web/get_sec_user_id", {
+  const res = await tryBases<any>("/api/douyin/web/get_sec_user_id", {
     url: profileUrl,
   });
   const data = res?.data ?? res;
@@ -62,8 +79,7 @@ export async function fetchUserPostVideos(
   count = 20,
   source = "account"
 ): Promise<TrendVideo[]> {
-  const res = await getJson<any>(
-    BASE,
+  const res = await tryBases<any>(
     "/api/douyin/web/fetch_user_post_videos",
     { sec_user_id: secUserId, max_cursor: 0, count },
     45000
@@ -78,8 +94,7 @@ export async function fetchUserPostVideos(
 
 // Parse 1 video bat ky (lay metadata + link). Dung cho buoc tai.
 export async function getVideoData(url: string): Promise<any> {
-  const res = await getJson<any>(
-    BASE,
+  const res = await tryBases<any>(
     "/api/hybrid/video_data",
     { url, minimal: false },
     45000

@@ -32,14 +32,30 @@ const EnvSchema = z.object({
   DOUYIN_API_BASE: z.string().url().default("https://douyin.wtf"),
   TRANSLATE_ENGINE: z.enum(["free", "ollama", "openai"]).default("ollama"),
   OLLAMA_HOST: z.string().url().default("http://127.0.0.1:11434"),
-  OLLAMA_MODEL: z.string().default("qwen2.5:7b"),
+  OLLAMA_MODEL: z.string().default("aya-expanse:8b"),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().default("gpt-4o-mini"),
   SOURCE_LANG: z.string().default("zh"),
   TARGET_LANG: z.string().default("vi"),
   WHISPER_MODEL: z.string().default("Xenova/whisper-small"),
   PIPER_VOICE: z.string().default("vi_VN-vais1000-medium"),
+
+  // --- Phu de ---
+  // Co nen den om sat chu phu de dich (BorderStyle=3): "true" | "false"
+  SUB_BG: z.string().default("true"),
+  SUB_FONT_SIZE: z.coerce.number().default(18),
+
+  // --- Tai video ---
+  // Lay cookies tu trinh duyet de qua duoc chan cua Douyin: "" | "chrome" | "edge" | "firefox"
+  YTDLP_COOKIES_FROM_BROWSER: z.string().default(""),
 });
+
+// Danh sach API base (ho tro nhieu instance, phan tach bang dau phay) de fallback.
+export const DOUYIN_API_BASES = (process.env.DOUYIN_API_BASE ??
+  "https://douyin.wtf")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 export const CONFIG = EnvSchema.parse(process.env);
 

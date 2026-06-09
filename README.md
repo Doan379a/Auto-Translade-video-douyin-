@@ -45,6 +45,17 @@ npm run dub -- <douyin-url-hoac-id>
 
 Kết quả nằm trong `output/`.
 
+## Cấu hình quan trọng (`.env`)
+
+| Biến | Ý nghĩa |
+|------|---------|
+| `TRANSLATE_ENGINE` | `free` (Google, không cài gì) · `ollama` (Qwen tự host, free, chất lượng tốt) · `openai` (trả phí) |
+| `OLLAMA_MODEL` | vd `qwen2.5:7b` — cần `ollama pull` trước |
+| `SUB_BG` | `true` = nền đen sau chữ phụ đề dịch |
+| `SUB_COVER_ORIGINAL` | `true` = phủ dải đen che phụ đề gốc ở đáy video |
+| `YTDLP_COOKIES_FROM_BROWSER` | `chrome`/`edge`... — lấy cookies để qua chặn tải của Douyin |
+| `DOUYIN_API_BASE` | nhiều base cách nhau dấu phẩy → tự fallback |
+
 ## Vì sao "clone-and-run"
 - Binary nặng (ffmpeg, yt-dlp, whisper, piper) và model **không commit** lên Git → `npm run setup` tải lại.
 - Không hardcode đường dẫn máy; mọi path tương đối + cấu hình qua `.env`.

@@ -1,8 +1,29 @@
 // Ghep cuoi: thay/long tieng + burn phu de vao video -> output mp4.
 import fs from "node:fs";
 import path from "node:path";
+import { CONFIG } from "../config.js";
 import { FFMPEG, run } from "../util/ff.js";
 import { log } from "../util/log.js";
+
+// Xay dung chuoi filter video: burn phu de dich, nen den CHI OM SAT chu
+// (BorderStyle=3) - khong phu den ca dai duoi de tranh che noi dung video.
+// Mau ASS dang &HAABBGGRR (AA=00 = dam dac).
+function buildVideoFilter(subsName: string): string {
+  const size = CONFIG.SUB_FONT_SIZE;
+  const bg = CONFIG.SUB_BG === "true";
+  const style = [
+    `Fontsize=${size}`,
+    `PrimaryColour=&H00FFFFFF`, // chu trang
+    `OutlineColour=&H00000000`, // mau hop nen: den
+    `BackColour=&H00000000`,
+    `BorderStyle=${bg ? 3 : 1}`, // 3 = hop nen den om sat chu; 1 = chi vien
+    `Outline=${bg ? 6 : 1}`, // padding cua hop quanh chu
+    `Shadow=0`,
+    `Alignment=2`, // giua, sat day
+    `MarginV=35`,
+  ].join(",");
+  return `subtitles=${subsName}:force_style='${style}'`;
+}
 
 // Chay ffmpeg voi cwd = workDir de tham chieu file phu de bang ten tuong doi,
 // tranh loi escape duong dan Windows trong filter "subtitles".
@@ -23,7 +44,7 @@ export async function mux(opts: {
   const args: string[] = ["-y", "-i", path.resolve(sourceVideo)];
   if (dubWav) args.push("-i", path.resolve(dubWav));
 
-  const vf = `subtitles=${subsName}:force_style='FontSize=18,Outline=1,Shadow=0'`;
+  const vf = buildVideoFilter(subsName);
 
   if (dubWav) {
     // Giu nhac nen goc nho (0.12) + long tieng (1.0)

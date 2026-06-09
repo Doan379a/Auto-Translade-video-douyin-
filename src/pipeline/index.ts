@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { DIRS, ensureDirs } from "../config.js";
+import { CONFIG, DIRS, ensureDirs } from "../config.js";
 import { log } from "../util/log.js";
 import { downloadVideo } from "./download.js";
 import { transcribe } from "./transcribe.js";
@@ -50,8 +50,12 @@ export async function dubVideo(url: string): Promise<DubResult> {
     log.warn("Khong nghe duoc loi noi nao (video co the khong co thoai).");
   }
 
-  // 3. Dich - cache lai
-  const translateCache = path.join(workDir, "translated.json");
+  // 3. Dich - cache theo engine + model (doi engine/model khong dung lai cache cu)
+  const cacheKey =
+    CONFIG.TRANSLATE_ENGINE === "ollama"
+      ? `ollama.${CONFIG.OLLAMA_MODEL.replace(/[^a-z0-9]+/gi, "_")}`
+      : CONFIG.TRANSLATE_ENGINE;
+  const translateCache = path.join(workDir, `translated.${cacheKey}.json`);
   let segments = readCache<Segment[]>(translateCache);
   if (segments) {
     log.ok(`Dung lai ban dich da cache (${segments.length} doan)`);
