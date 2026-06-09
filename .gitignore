@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+dist/
+
+# Secrets / local config
+.env
+.env.local
+
+# Downloaded binaries (fetched by `npm run setup`) - KHONG commit
+bin/
+vendor/
+
+# AI models & voices (nang, fetched by setup) - KHONG commit
+models/
+voices/
+
+# Whisper.cpp model cache (do nodejs-whisper tai ve)
+node_modules/nodejs-whisper/cpp/whisper.cpp/models/*.bin
+
+# Output artifacts
+output/
+work/
+*.mp4
+*.wav
+*.srt
+!sample/**
+
+# Cache duoc sinh ra (resolve sec_user_id...) - khong commit
+data/*.cache.json
+
+# Logs / OS
+*.log
+.DS_Store
+Thumbs.db

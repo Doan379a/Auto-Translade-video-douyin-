@@ -1,0 +1,6 @@
+{
+  "_comment": "Danh sach kenh Douyin de keo video moi nhat lam nguon trend. Sua tu do. Moi muc: name + url (link trang ca nhan Douyin). Co the dung 'secUserId' truc tiep neu da biet de bo qua buoc resolve.",
+  "accounts": [
+    { "name": "Ví dụ - thay bằng kênh bạn theo dõi", "url": "https://www.douyin.com/user/MS4wLjABAAAA-EXAMPLE-REPLACE-ME" }
+  ]
+}

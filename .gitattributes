@@ -1,0 +1,11 @@
+# Chuan hoa line-ending cho dung cheo Windows <-> mac/linux
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary - khong dung cho
+*.mp4 binary
+*.wav binary
+*.bin binary
+*.onnx binary
