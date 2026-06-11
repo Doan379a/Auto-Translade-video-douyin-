@@ -261,6 +261,56 @@ export function deleteJob(id: string): void {
   log.ok(`Da xoa job + file: ${id}`);
 }
 
+// --- Dung luong ---
+function dirSize(dir: string): number {
+  let total = 0;
+  if (!fs.existsSync(dir)) return 0;
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    try {
+      total += e.isDirectory() ? dirSize(p) : fs.statSync(p).size;
+    } catch {
+      /* bo qua file loi */
+    }
+  }
+  return total;
+}
+
+export function storageInfo(): { work: number; output: number } {
+  return { work: dirSize(DIRS.work), output: dirSize(DIRS.output) };
+}
+
+// Don work/ (file tam) + tuy chon output/ (video da xuat). Tra ve so byte da giai phong.
+export function cleanStorage(opts: { output?: boolean } = {}): { workFreed: number; outputFreed: number } {
+  if ([...jobs.values()].some((j) => j.status === "preparing" || j.status === "rendering")) {
+    throw new Error("Đang có job chạy — đợi xong rồi dọn.");
+  }
+  const workFreed = dirSize(DIRS.work);
+  if (fs.existsSync(DIRS.work)) {
+    for (const d of fs.readdirSync(DIRS.work)) {
+      fs.rmSync(path.join(DIRS.work, d), { recursive: true, force: true });
+    }
+  }
+  let outputFreed = 0;
+  if (opts.output) {
+    outputFreed = dirSize(DIRS.output);
+    if (fs.existsSync(DIRS.output)) {
+      for (const f of fs.readdirSync(DIRS.output)) {
+        fs.rmSync(path.join(DIRS.output, f), { force: true });
+      }
+    }
+    // Video da xoa -> bo cac job "done" khoi danh sach
+    for (const j of [...jobs.values()]) {
+      if (j.status === "done") {
+        jobs.delete(j.id);
+        jobEvents.emit("delete", j.id);
+      }
+    }
+    persist();
+  }
+  return { workFreed, outputFreed };
+}
+
 // Luu phu de da sua (khong render).
 export function updateSegments(id: string, segments: Segment[]): Job {
   const job = jobs.get(id);

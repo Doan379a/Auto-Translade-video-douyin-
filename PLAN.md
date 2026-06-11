@@ -55,10 +55,10 @@ Mục tiêu: sửa phụ đề không còn "mù", giảm số lần render lại
 - [x] WEB_PASSWORD (Basic Auth) bảo vệ web khi truy cập từ xa; localhost được miễn
 - [x] Test + commit (localhost 200+cookie; LAN ko pass→401; LAN có pass→200 cookie ẩn)
 
-### #6 — Quản lý dung lượng từ web  `[ ]`
-- [ ] Hiện dung lượng work/ + output/
-- [ ] Nút dọn work/ (và tùy chọn output/) từ UI
-- [ ] Test + commit
+### #6 — Quản lý dung lượng từ web  [x] XONG
+- [x] Hiện dung lượng work/ + output/ (tab Hàng đợi)
+- [x] Nút 🧹 dọn work/ (tùy chọn xóa cả output/ qua xác nhận thứ 2); chặn khi đang có job chạy
+- [x] Test + commit (dọn work 1GB, video thật giữ nguyên)
 
 ---
 
@@ -76,4 +76,5 @@ Mục tiêu: sửa phụ đề không còn "mù", giảm số lần render lại
 - 2026-06-11 — #2 Báo cookie hết hạn khi job tải lỗi — 8a19a37 — verify hàm check OK
 - 2026-06-11 — #3 Chọn giọng + tốc độ đọc — 39ff93f — test 2 giọng + tốc độ OK
 - 2026-06-11 — #4 Sửa timing + gộp/tách câu — 01bb768 — node --check OK
-- 2026-06-11 — #5 Bảo mật cookie + mật khẩu web — (commit kế tiếp) — test localhost/LAN OK
+- 2026-06-11 — #5 Bảo mật cookie + mật khẩu web — 259f535 — test localhost/LAN OK
+- 2026-06-11 — #6 Quản lý dung lượng từ web — (commit kế tiếp) — dọn work 1GB OK

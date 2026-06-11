@@ -591,9 +591,37 @@ function connectSSE() {
 // ====== Nut "Go da chon" ======
 $("#delSelBtn").addEventListener("click", () => deleteJobs([...selectedJobs]));
 
+// ====== Dung luong ======
+$("#cleanBtn").addEventListener("click", doCleanStorage);
+const mb = (b) => (b / 1e6).toFixed(0) + " MB";
+
+async function loadStorage() {
+  try {
+    const s = await fetch("/api/storage").then((r) => r.json());
+    $("#storageInfo").textContent = `Dung lượng: tạm ${mb(s.work)} · video ${mb(s.output)}`;
+  } catch { /* bo qua */ }
+}
+
+async function doCleanStorage() {
+  if (!confirm("Dọn file tạm trong work/ (cache, video nguồn đã tải)? Video đã xuất vẫn được giữ.\n(Job đang chờ duyệt sẽ cần chuẩn bị lại.)")) return;
+  const output = confirm("Xóa LUÔN các video đã xuất trong output/?\n- OK = xóa cả video đã làm (gỡ khỏi danh sách)\n- Cancel = chỉ dọn file tạm");
+  try {
+    const r = await fetch("/api/storage/clean", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ output }),
+    }).then((res) => res.json());
+    if (r.error) throw new Error(r.error);
+    alert(`Đã dọn: tạm ${mb(r.workFreed)}` + (output ? ` · video ${mb(r.outputFreed)}` : ""));
+    loadStorage();
+  } catch (e) {
+    alert("Dọn lỗi: " + e.message);
+  }
+}
+
 // ====== Init ======
 loadJobs();
 loadAccounts();
 loadSettings();
 loadVoices();
+loadStorage();
 connectSSE();

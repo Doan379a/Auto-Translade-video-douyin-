@@ -25,6 +25,8 @@ import {
   listJobs,
   getJob,
   jobEvents,
+  storageInfo,
+  cleanStorage,
   type Job,
 } from "./jobs.js";
 
@@ -196,6 +198,16 @@ export function startServer(): void {
       jobEvents.off("update", onUpdate);
       jobEvents.off("delete", onDelete);
     });
+  });
+
+  // --- Dung luong (xem + don) ---
+  app.get("/api/storage", (_req, res) => res.json(storageInfo()));
+  app.post("/api/storage/clean", (req, res) => {
+    try {
+      res.json(cleanStorage({ output: !!req.body?.output }));
+    } catch (e) {
+      res.status(400).json({ error: (e as Error).message });
+    }
   });
 
   // --- Danh sach giong doc da cai + giong mac dinh ---
