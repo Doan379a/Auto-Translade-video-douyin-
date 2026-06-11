@@ -114,12 +114,15 @@ async function cmdDoctor(): Promise<void> {
       detail = `khong ket noi duoc Ollama tai ${CONFIG.OLLAMA_HOST} (da cai & chay chua?)`;
     }
     checks.push(["ollama (dich)", ok, detail]);
-  } else {
+  } else if (CONFIG.TRANSLATE_ENGINE === "openai") {
     checks.push([
       "openai (dich)",
       !!CONFIG.OPENAI_API_KEY,
       CONFIG.OPENAI_API_KEY ? "co API key" : "thieu OPENAI_API_KEY",
     ]);
+  } else {
+    // engine "free": Google dich cong khai, khong can cau hinh.
+    checks.push(["dich (free)", true, "Google translate cong khai - khong can key"]);
   }
 
   console.log("\n=== KIEM TRA HE THONG ===");

@@ -35,6 +35,59 @@ $("#addLinkBtn").addEventListener("click", addLink);
 $("#linkInput").addEventListener("keydown", (e) => { if (e.key === "Enter") addLink(); });
 $("#processBtn").addEventListener("click", processSelected);
 
+// ====== Quan ly kenh theo doi ======
+$("#chAddBtn").addEventListener("click", addChannel);
+$("#chValue").addEventListener("keydown", (e) => { if (e.key === "Enter") addChannel(); });
+
+async function loadAccounts() {
+  try {
+    const list = await fetch("/api/accounts").then((r) => r.json());
+    $("#chCount").textContent = list.length;
+    const box = $("#chList");
+    box.innerHTML = "";
+    if (list.length === 0) {
+      box.innerHTML = `<div class="hint" style="margin:0">Chưa có kênh nào. Dán link kênh ở trên để thêm.</div>`;
+      return;
+    }
+    list.forEach((a) => {
+      const chip = document.createElement("div");
+      chip.className = "ch-item";
+      const ref = a.secUserId ? "ID: " + a.secUserId.slice(0, 16) + "…" : esc(a.url || "");
+      chip.innerHTML = `<span class="ch-info"><b>${esc(a.name)}</b><small>${ref}</small></span>
+        <button class="iconbtn" title="Xóa kênh">🗑</button>`;
+      chip.querySelector("button").addEventListener("click", () => removeChannel(a.key, a.name));
+      box.appendChild(chip);
+    });
+  } catch {
+    $("#chList").innerHTML = `<div class="hint" style="margin:0">Không tải được danh sách kênh.</div>`;
+  }
+}
+
+async function addChannel() {
+  const value = $("#chValue").value.trim();
+  const name = $("#chName").value.trim();
+  if (!value) return;
+  const res = await fetch("/api/accounts", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ value, name }),
+  });
+  const data = await res.json();
+  if (!res.ok) { alert(data.error || "Không thêm được kênh"); return; }
+  $("#chValue").value = "";
+  $("#chName").value = "";
+  $("#channelPanel").open = true;
+  loadAccounts();
+}
+
+async function removeChannel(key, name) {
+  if (!confirm(`Xóa kênh "${name}" khỏi danh sách theo dõi?`)) return;
+  await fetch("/api/accounts/delete", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key }),
+  });
+  loadAccounts();
+}
+
 async function scanTrends() {
   const status = $("#trendStatus");
   status.textContent = "Đang quét trend từ Douyin…";
@@ -297,4 +350,5 @@ $("#delSelBtn").addEventListener("click", () => deleteJobs([...selectedJobs]));
 
 // ====== Init ======
 loadJobs();
+loadAccounts();
 connectSSE();

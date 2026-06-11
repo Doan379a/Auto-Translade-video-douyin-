@@ -24,6 +24,16 @@
       <button id="scanBtn">⟳ Quét trend</button>
       <button id="processBtn" disabled>Xử lý đã chọn (<span id="selCount">0</span>)</button>
     </div>
+    <details id="channelPanel" class="channels">
+      <summary>📺 Quản lý kênh theo dõi (<span id="chCount">0</span>)</summary>
+      <div class="ch-add">
+        <input id="chValue" type="text" placeholder="Dán link kênh (douyin.com/user/...) hoặc secUserId (MS4w...)" />
+        <input id="chName" type="text" class="ch-name" placeholder="Tên gợi nhớ (tùy chọn)" />
+        <button id="chAddBtn">+ Thêm kênh</button>
+      </div>
+      <div id="chList" class="ch-list"></div>
+      <div class="hint">Thêm/xóa kênh xong bấm "⟳ Quét trend" để lấy video mới nhất từ các kênh này.</div>
+    </details>
     <div id="trendStatus" class="hint"></div>
     <div id="trendGrid" class="grid"></div>
   </section>

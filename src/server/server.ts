@@ -4,6 +4,7 @@ import express from "express";
 import { ROOT, DIRS, ensureDirs } from "../config.js";
 import { log } from "../util/log.js";
 import { getTrends } from "../trends/index.js";
+import { listAccounts, addAccount, removeAccount } from "./accounts.js";
 import { ensureDouyinApi, stopDouyinApi } from "./douyinSidecar.js";
 import {
   createJob,
@@ -32,6 +33,21 @@ export function startServer(): void {
     } catch (e) {
       res.status(500).json({ error: (e as Error).message });
     }
+  });
+
+  // --- Quan ly kenh theo doi (ghi data/accounts.json) ---
+  app.get("/api/accounts", (_req, res) => res.json(listAccounts()));
+  app.post("/api/accounts", (req, res) => {
+    try {
+      const acc = addAccount(String(req.body?.value ?? ""), String(req.body?.name ?? ""));
+      res.json(acc);
+    } catch (e) {
+      res.status(400).json({ error: (e as Error).message });
+    }
+  });
+  app.post("/api/accounts/delete", (req, res) => {
+    removeAccount(String(req.body?.key ?? ""));
+    res.json({ ok: true });
   });
 
   // --- Tao job (1 hoac nhieu) -> chay pha chuan bi ---

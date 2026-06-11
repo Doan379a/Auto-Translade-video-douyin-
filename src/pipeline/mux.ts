@@ -41,24 +41,27 @@ function buildAudioFilter(
     // input 2 = nhac nen da tach (khong con giong noi) -> mix thang voi long tieng
     return (
       `[2:a]${FMT},volume=${v}[bg];[1:a]${FMT}[vo];` +
-      `[bg][vo]amix=inputs=2:normalize=0[aout]`
+      `[bg][vo]amix=inputs=2:normalize=0:duration=longest[aout]`
     );
   }
   if (mode === "duck") {
     // Nhac nen = tieng goc; ha nho TU DONG khi long tieng phat (sidechain),
     // nho lai khi im -> nghe ro nhac nen ma khong dam long tieng.
+    // QUAN TRONG: pad sidechain bang apad -> sidechaincompress chay HET do dai
+    // nhac goc, khong bi cat ngan theo track long tieng (tranh cut cuoi video).
     return (
       `[1:a]${FMT},asplit=2[vo][sc];` +
+      `[sc]apad[scp];` +
       `[0:a]${FMT}[m];` +
-      `[m][sc]sidechaincompress=threshold=0.05:ratio=12:attack=15:release=300[duck];` +
+      `[m][scp]sidechaincompress=threshold=0.05:ratio=12:attack=15:release=300[duck];` +
       `[duck]volume=${v}[bg];` +
-      `[bg][vo]amix=inputs=2:normalize=0[aout]`
+      `[bg][vo]amix=inputs=2:normalize=0:duration=longest[aout]`
     );
   }
   // none: bo nhac nen goc (giu rat nho theo ORIG_VOLUME) + long tieng
   return (
     `[0:a]${FMT},volume=${CONFIG.ORIG_VOLUME}[bg];[1:a]${FMT}[vo];` +
-    `[bg][vo]amix=inputs=2:normalize=0[aout]`
+    `[bg][vo]amix=inputs=2:normalize=0:duration=longest[aout]`
   );
 }
 
