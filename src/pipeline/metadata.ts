@@ -48,7 +48,10 @@ function parseJsonLoose(raw: string): any | null {
   }
 }
 
-export async function generateMetadata(segments: Segment[]): Promise<VideoMeta> {
+export async function generateMetadata(
+  segments: Segment[],
+  targetLang: string = CONFIG.TARGET_LANG
+): Promise<VideoMeta> {
   const text = fullText(segments);
   if (!text) return { title: "Video", description: "", tags: [] };
 
@@ -57,7 +60,7 @@ export async function generateMetadata(segments: Segment[]): Promise<VideoMeta> 
     return heuristicMeta(segments);
   }
 
-  const lang = LANG_LABEL[CONFIG.TARGET_LANG] ?? CONFIG.TARGET_LANG;
+  const lang = LANG_LABEL[targetLang] ?? targetLang;
   const system =
     `Ban la chuyen gia content social/YouTube. Dua tren noi dung video (da dich), ` +
     `tao metadata HAP DAN bang ${lang}. Tra ve DUY NHAT JSON dang ` +

@@ -249,9 +249,10 @@ async function processSelected() {
 }
 
 async function createJobs(items) {
+  const targetLang = $("#langSel") ? $("#langSel").value : "vi";
   const res = await fetch("/api/jobs", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items }),
+    body: JSON.stringify({ items, targetLang }),
   });
   const data = await res.json();
   if (!res.ok) { alert(data.error || "Lỗi tạo job"); return; }

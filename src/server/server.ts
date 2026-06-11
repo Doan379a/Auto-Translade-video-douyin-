@@ -129,7 +129,8 @@ export function startServer(): void {
         ? [{ url: req.body.url, title: req.body.title }]
         : [];
     if (items.length === 0) return res.status(400).json({ error: "Thieu url" });
-    const created = items.map((it) => createJob(it.url, it.title ?? ""));
+    const targetLang = req.body?.targetLang ? String(req.body.targetLang) : undefined;
+    const created = items.map((it) => createJob(it.url, it.title ?? "", { targetLang }));
     res.json(created);
   });
 

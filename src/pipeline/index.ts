@@ -42,10 +42,12 @@ function readCache<T>(file: string): T | null {
   }
 }
 
-function translateCacheKey(): string {
-  return CONFIG.TRANSLATE_ENGINE === "ollama"
-    ? `ollama.${CONFIG.OLLAMA_MODEL.replace(/[^a-z0-9]+/gi, "_")}`
-    : CONFIG.TRANSLATE_ENGINE;
+function translateCacheKey(targetLang: string): string {
+  const eng =
+    CONFIG.TRANSLATE_ENGINE === "ollama"
+      ? `ollama.${CONFIG.OLLAMA_MODEL.replace(/[^a-z0-9]+/gi, "_")}`
+      : CONFIG.TRANSLATE_ENGINE;
+  return `${eng}.${targetLang}`; // tach cache theo ngon ngu dich
 }
 
 export interface PreparedVideo {
@@ -55,12 +57,18 @@ export interface PreparedVideo {
   segments: Segment[];
 }
 
+export interface PrepareOptions {
+  targetLang?: string; // ngon ngu dich (mac dinh CONFIG.TARGET_LANG)
+}
+
 // PHA 1: tai + chep loi + dich. Tat ca deu cache de chay lai nhanh.
 export async function prepareVideo(
   url: string,
-  onProgress: OnProgress = noop
+  onProgress: OnProgress = noop,
+  opts: PrepareOptions = {}
 ): Promise<PreparedVideo> {
   ensureDirs();
+  const targetLang = opts.targetLang || CONFIG.TARGET_LANG;
   const awemeId = deriveId(url);
   const workDir = path.join(DIRS.work, awemeId);
   fs.mkdirSync(workDir, { recursive: true });
@@ -84,13 +92,18 @@ export async function prepareVideo(
   log.ok(`Gop doan: ${rawSegments.length} -> ${mergedSegments.length}`);
 
   onProgress({ stage: "translate" });
-  const translateCache = path.join(workDir, `translated.${PIPE_VERSION}.${translateCacheKey()}.json`);
+  const translateCache = path.join(
+    workDir,
+    `translated.${PIPE_VERSION}.${translateCacheKey(targetLang)}.json`
+  );
   let segments = readCache<Segment[]>(translateCache);
   if (segments) {
     log.ok(`Dung lai ban dich da cache (${segments.length} doan)`);
   } else {
-    segments = await translateSegments(mergedSegments, (done, total) =>
-      onProgress({ stage: "translate", done, total })
+    segments = await translateSegments(
+      mergedSegments,
+      (done, total) => onProgress({ stage: "translate", done, total }),
+      targetLang
     );
     fs.writeFileSync(translateCache, JSON.stringify(segments, null, 2));
   }
@@ -103,6 +116,7 @@ export async function prepareVideo(
 export interface RenderOptions {
   voice?: string;
   speed?: number;
+  targetLang?: string; // de sinh metadata dung ngon ngu dau ra
 }
 export async function renderVideo(
   awemeId: string,
@@ -113,6 +127,7 @@ export async function renderVideo(
   ensureDirs();
   const voice = opts.voice || CONFIG.PIPER_VOICE;
   const speed = opts.speed && opts.speed > 0 ? opts.speed : CONFIG.DUB_SPEED;
+  const targetLang = opts.targetLang || CONFIG.TARGET_LANG;
   const workDir = path.join(DIRS.work, awemeId);
   const sourceVideo = path.join(workDir, "source.mp4");
   if (!fs.existsSync(sourceVideo)) {
@@ -180,7 +195,7 @@ export async function renderVideo(
   if (CONFIG.GEN_METADATA === "true") {
     onProgress({ stage: "metadata" });
     try {
-      const meta = await generateMetadata(segments);
+      const meta = await generateMetadata(segments, targetLang);
       metaPath = path.join(DIRS.output, `${awemeId}.meta.json`);
       fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));
       log.ok(`Metadata: ${meta.title}`);

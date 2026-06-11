@@ -64,7 +64,10 @@ Mục tiêu: sửa phụ đề không còn "mù", giảm số lần render lại
 
 ## 🟢 Mở rộng (khi cần)
 
-### #7 — Đa ngôn ngữ đầu ra (EN/JP…)  `[ ]`
+### #7 — Đa ngôn ngữ đầu ra (EN/JP…)  [x] XONG
+- [x] Chọn ngôn ngữ đích theo job (dropdown tab Trend) -> dịch + phụ đề + metadata theo lang đó
+- [x] targetLang xuyên suốt prepare→translate(cache riêng theo lang)→render→metadata
+- [x] Test + commit (zh→en/ja/ko đúng). Lưu ý: lồng tiếng non-vi cần cài giọng Piper tương ứng; không thì dùng như phụ đề.
 ### #8 — Tạo thumbnail / ảnh bìa  `[ ]`
 ### #9 — Nguồn trend toàn sàn (TikHub trả phí)  `[ ]`
 ### #10 — Nút tải .srt và .meta từ UI  [x] XONG
@@ -81,4 +84,5 @@ Mục tiêu: sửa phụ đề không còn "mù", giảm số lần render lại
 - 2026-06-11 — #4 Sửa timing + gộp/tách câu — 01bb768 — node --check OK
 - 2026-06-11 — #5 Bảo mật cookie + mật khẩu web — 259f535 — test localhost/LAN OK
 - 2026-06-11 — #6 Quản lý dung lượng từ web — 56724c4 — dọn work 1GB OK
-- 2026-06-11 — #10 Nút tải .srt + .meta — (commit kế tiếp) — scan srtUrl + serve OK
+- 2026-06-11 — #10 Nút tải .srt + .meta — 5e631a4 — scan srtUrl + serve OK
+- 2026-06-11 — #7 Đa ngôn ngữ đầu ra — (commit kế tiếp) — zh→en/ja/ko OK

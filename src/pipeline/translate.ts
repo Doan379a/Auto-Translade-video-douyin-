@@ -18,10 +18,10 @@ function langLabel(code: string): string {
 
 // Engine "free": Google dich cong khai, khong can key/cai dat. Dich 1 doan.
 // Don gian, hop demo; do tin cay thap hon Ollama/OpenAI (co the bi rate-limit).
-async function translateFree(text: string): Promise<string> {
+async function translateFree(text: string, targetLang: string): Promise<string> {
   const url =
     `https://translate.googleapis.com/translate_a/single?client=gtx` +
-    `&sl=${CONFIG.SOURCE_LANG}&tl=${CONFIG.TARGET_LANG}&dt=t&q=${encodeURIComponent(text)}`;
+    `&sl=${CONFIG.SOURCE_LANG}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
   const res = await fetch(url, {
     headers: { "user-agent": "Mozilla/5.0" },
   });
@@ -71,26 +71,28 @@ export async function callLLM(system: string, user: string): Promise<string> {
   return String(json.choices?.[0]?.message?.content ?? "").trim();
 }
 
-async function translateOne(text: string): Promise<string> {
+async function translateOne(text: string, targetLang: string): Promise<string> {
   const system = `Ban la dich gia chuyen nghiep. Dich tu ${langLabel(
     CONFIG.SOURCE_LANG
   )} sang ${langLabel(
-    CONFIG.TARGET_LANG
+    targetLang
   )}. Chi tra ve ban dich, khong giai thich, giu nguyen y va giong dieu noi.`;
   return callLLM(system, text);
 }
 
 // Dich tat ca cac doan. Batch theo dau [[n]] de it goi LLM; sai so thi fallback tung doan.
+// targetLang: ngon ngu dich (mac dinh CONFIG.TARGET_LANG) -> ho tro dau ra da ngon ngu.
 export type TranslateProgress = (done: number, total: number) => void;
 export async function translateSegments(
   segments: Segment[],
-  onProgress?: TranslateProgress
+  onProgress?: TranslateProgress,
+  targetLang: string = CONFIG.TARGET_LANG
 ): Promise<Segment[]> {
   if (segments.length === 0) return segments;
   const total = segments.length;
   log.step(
     `Dich ${segments.length} doan: ${langLabel(CONFIG.SOURCE_LANG)} → ${langLabel(
-      CONFIG.TARGET_LANG
+      targetLang
     )} (${CONFIG.TRANSLATE_ENGINE})...`
   );
 
@@ -98,7 +100,7 @@ export async function translateSegments(
   if (CONFIG.TRANSLATE_ENGINE === "free") {
     for (let i = 0; i < segments.length; i++) {
       try {
-        segments[i].translated = await translateFree(segments[i].text);
+        segments[i].translated = await translateFree(segments[i].text, targetLang);
       } catch (e) {
         log.warn(`Doan ${i + 1} dich loi (${(e as Error).message}), giu nguyen goc`);
         segments[i].translated = segments[i].text;
@@ -111,7 +113,7 @@ export async function translateSegments(
 
   // Prompt tieng Anh (model bam sat hon), ep dau ra CHI tieng dich.
   const src = langLabel(CONFIG.SOURCE_LANG);
-  const tgt = langLabel(CONFIG.TARGET_LANG);
+  const tgt = langLabel(targetLang);
   const system =
     `You are a professional short-video subtitle translator. ` +
     `Translate each numbered line from ${src} into natural, colloquial ${tgt} ` +
@@ -132,11 +134,11 @@ export async function translateSegments(
         if (m) map.set(Number(m[1]), m[2].trim());
       }
       for (let i = 0; i < chunk.length; i++) {
-        chunk[i].translated = map.get(i + 1) || (await translateOne(chunk[i].text));
+        chunk[i].translated = map.get(i + 1) || (await translateOne(chunk[i].text, targetLang));
       }
     } catch (e) {
       log.warn(`Lo ${start}-${start + chunk.length} loi (${(e as Error).message}), dich tung doan...`);
-      for (const s of chunk) s.translated = await translateOne(s.text);
+      for (const s of chunk) s.translated = await translateOne(s.text, targetLang);
     }
     const done = Math.min(start + CHUNK, total);
     log.step(`Dich ${done}/${total}`);

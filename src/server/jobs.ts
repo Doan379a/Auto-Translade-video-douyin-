@@ -32,6 +32,7 @@ export interface Job {
   cookieHint?: boolean; // loi co kha nang do cookie Douyin het han
   voice?: string; // giong doc da chon
   speed?: number; // toc do doc da chon
+  targetLang?: string; // ngon ngu dau ra da chon
   createdAt: number;
 }
 
@@ -149,7 +150,7 @@ function enqueue(task: Task): void {
 }
 
 // Tao job tu 1 video -> chay pha CHUAN BI (tai/chep/dich) roi cho duyet.
-export function createJob(url: string, title = ""): Job {
+export function createJob(url: string, title = "", opts: { targetLang?: string } = {}): Job {
   const id = deriveId(url);
   let job = jobs.get(id);
   if (job && (job.status === "preparing" || job.status === "rendering")) {
@@ -160,6 +161,7 @@ export function createJob(url: string, title = ""): Job {
     url,
     title: title || url,
     status: "queued",
+    targetLang: opts.targetLang,
     createdAt: Date.now(),
   };
   jobs.set(id, job);
@@ -170,12 +172,16 @@ export function createJob(url: string, title = ""): Job {
     j.status = "preparing";
     emit(j);
     try {
-      const prepared = await prepareVideo(url, (p) => {
-        j.stage = p.stage;
-        j.done = p.done;
-        j.total = p.total;
-        emit(j);
-      });
+      const prepared = await prepareVideo(
+        url,
+        (p) => {
+          j.stage = p.stage;
+          j.done = p.done;
+          j.total = p.total;
+          emit(j);
+        },
+        { targetLang: j.targetLang }
+      );
       j.segments = prepared.segments;
       j.status = "review";
       j.stage = undefined;
@@ -235,7 +241,7 @@ export function renderJob(
           j.total = p.total;
           emit(j);
         },
-        { voice: j.voice, speed: j.speed }
+        { voice: j.voice, speed: j.speed, targetLang: j.targetLang }
       );
       j.status = "done";
       j.stage = undefined;
