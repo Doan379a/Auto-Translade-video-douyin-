@@ -67,7 +67,10 @@ Mục tiêu: sửa phụ đề không còn "mù", giảm số lần render lại
 ### #7 — Đa ngôn ngữ đầu ra (EN/JP…)  `[ ]`
 ### #8 — Tạo thumbnail / ảnh bìa  `[ ]`
 ### #9 — Nguồn trend toàn sàn (TikHub trả phí)  `[ ]`
-### #10 — Nút tải .srt và .meta từ UI  `[ ]`
+### #10 — Nút tải .srt và .meta từ UI  [x] XONG
+- [x] render lưu .srt ra output/ (tải được kể cả sau khi dọn work/)
+- [x] Job có srtUrl; nút "⬇ SRT" + "⬇ Mô tả" cho video done; xóa kèm khi gỡ job
+- [x] Test + commit (scan srtUrl + serve 200)
 
 ---
 
@@ -77,4 +80,5 @@ Mục tiêu: sửa phụ đề không còn "mù", giảm số lần render lại
 - 2026-06-11 — #3 Chọn giọng + tốc độ đọc — 39ff93f — test 2 giọng + tốc độ OK
 - 2026-06-11 — #4 Sửa timing + gộp/tách câu — 01bb768 — node --check OK
 - 2026-06-11 — #5 Bảo mật cookie + mật khẩu web — 259f535 — test localhost/LAN OK
-- 2026-06-11 — #6 Quản lý dung lượng từ web — (commit kế tiếp) — dọn work 1GB OK
+- 2026-06-11 — #6 Quản lý dung lượng từ web — 56724c4 — dọn work 1GB OK
+- 2026-06-11 — #10 Nút tải .srt + .meta — (commit kế tiếp) — scan srtUrl + serve OK

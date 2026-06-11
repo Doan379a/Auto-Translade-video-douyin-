@@ -167,6 +167,14 @@ export async function renderVideo(
   const outPath = path.join(DIRS.output, `${awemeId}.mp4`);
   await mux({ sourceVideo, dubWav, bgWav, bgMode, srtPath, workDir, outPath });
 
+  // Luu phu de ra output/ de tai ve (work/ co the bi don sau).
+  const outSrt = path.join(DIRS.output, `${awemeId}.srt`);
+  try {
+    fs.copyFileSync(srtPath, outSrt);
+  } catch {
+    /* khong sao */
+  }
+
   // Metadata dang video (tieu de/mo ta/hashtag) -> output/<id>.meta.json
   let metaPath: string | undefined;
   if (CONFIG.GEN_METADATA === "true") {

@@ -298,8 +298,10 @@ function jobCard(j) {
   let right = "";
   if (j.status === "review") right = `<button class="primary" data-act="edit">Duyệt & sửa phụ đề</button>`;
   else if (j.status === "done") right = `<video src="${j.videoUrl}" controls></video>
-     <a href="${j.videoUrl}" download><button class="secondary">⬇ Tải</button></a>` +
-     (j.metaUrl ? `<button class="secondary" data-act="meta">📋 Tiêu đề/mô tả</button>` : "");
+     <a href="${j.videoUrl}" download><button class="secondary">⬇ Video</button></a>` +
+     (j.srtUrl ? `<a href="${j.srtUrl}" download><button class="secondary">⬇ SRT</button></a>` : "") +
+     (j.metaUrl ? `<button class="secondary" data-act="meta">📋 Tiêu đề/mô tả</button>` : "") +
+     (j.metaUrl ? `<a href="${j.metaUrl}" download><button class="secondary">⬇ Mô tả</button></a>` : "");
   else if (j.status === "error") right = `<button data-act="retry">Thử lại</button>` +
      (j.cookieHint ? `<button class="secondary" data-act="fixcookie">⚙️ Cập nhật cookie</button>` : "");
 
