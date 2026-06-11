@@ -5,6 +5,7 @@ import path from "node:path";
 import { prepareVideo, renderVideo, deriveId } from "../pipeline/index.js";
 import { DIRS, ROOT } from "../config.js";
 import { log } from "../util/log.js";
+import { checkDouyinCookieAlive } from "./douyinSidecar.js";
 import type { Segment } from "../pipeline/types.js";
 
 export type JobStatus =
@@ -27,6 +28,7 @@ export interface Job {
   videoUrl?: string;
   metaUrl?: string; // /output/<id>.meta.json neu co
   error?: string;
+  cookieHint?: boolean; // loi co kha nang do cookie Douyin het han
   createdAt: number;
 }
 
@@ -178,6 +180,21 @@ export function createJob(url: string, title = ""): Job {
     } catch (e) {
       j.status = "error";
       j.error = (e as Error).message;
+      // Neu loi o buoc tai -> kiem tra cookie that de bao chinh xac (het han hay khong).
+      const isDownloadErr =
+        j.stage === "download" || /tai duoc video|bi chan|HTTP 4\d\d|qua nho|sec_user_id/i.test(j.error);
+      if (isDownloadErr) {
+        try {
+          const { tested, alive } = await checkDouyinCookieAlive();
+          if (tested && !alive) {
+            j.cookieHint = true;
+            j.error = "Cookie Douyin hết hạn / không dùng được — cập nhật ở mục Cài đặt rồi bấm Thử lại.";
+          }
+        } catch {
+          /* khong kiem tra duoc -> giu loi goc */
+        }
+      }
+      j.stage = undefined;
       emit(j);
     }
   });

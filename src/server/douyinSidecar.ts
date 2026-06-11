@@ -4,9 +4,14 @@ import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { ROOT } from "../config.js";
+import { ROOT, DOUYIN_API_BASES } from "../config.js";
 import { log } from "../util/log.js";
 import { getDouyinCookie } from "./settings.js";
+import { listAccounts } from "./accounts.js";
+import { checkCookieAlive } from "../trends/douyinApi.js";
+
+// sec_user_id de test cookie khi danh sach kenh trong (1 kenh Douyin pho bien co san).
+const COOKIE_TEST_SEC = "MS4wLjABAAAAeRbRWRWru7IIlwdFmkzGFxWTtAZ-iN4lgoZrxSHGdN8";
 
 export const DOUYIN_API_PORT = 8642;
 const API_DIR = path.join(ROOT, "vendor", "douyin-api");
@@ -54,6 +59,19 @@ async function isUp(): Promise<boolean> {
 // Public: API Douyin self-host co dang chay khong (de quyet dinh kiem tra cookie o dau).
 export function isDouyinApiUp(): Promise<boolean> {
   return isUp();
+}
+
+// Kiem tra cookie Douyin con song khong (uu tien test qua self-host).
+// tested=false neu khong co base nao de test.
+export async function checkDouyinCookieAlive(): Promise<{ tested: boolean; alive: boolean }> {
+  if (!getDouyinCookie()) return { tested: true, alive: false };
+  const selfUp = await isUp();
+  const base = selfUp
+    ? DOUYIN_API_LOCAL_BASE
+    : DOUYIN_API_BASES.find((b) => !b.includes("127.0.0.1"));
+  if (!base) return { tested: false, alive: false };
+  const sec = listAccounts().find((a) => a.secUserId)?.secUserId ?? COOKIE_TEST_SEC;
+  return { tested: true, alive: await checkCookieAlive(base, sec) };
 }
 
 // Bao dam API dang chay; tra ve true neu san sang.

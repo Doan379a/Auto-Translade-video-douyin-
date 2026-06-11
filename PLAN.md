@@ -28,11 +28,11 @@ Mục tiêu: sửa phụ đề không còn "mù", giảm số lần render lại
 - [x] Nút 🔊 "nghe thử" từng câu (POST /api/tts-preview synth Piper rồi phát)
 - [x] Test + commit (đã test API: tts-preview + serve wav 200 OK)
 
-### #2 — Báo rõ "cookie hết hạn" khi job tải lỗi  `[ ]`
-- [ ] download.ts/jobs.ts nhận diện lỗi 400/expired khi tải
-- [ ] Job báo lỗi rõ "Cookie Douyin có thể hết hạn — cập nhật ở Cài đặt"
-- [ ] (tùy chọn) tự gợi ý mở mục Cài đặt trên UI
-- [ ] Test + commit
+### #2 — Báo rõ "cookie hết hạn" khi job tải lỗi  [x] XONG
+- [x] jobs.ts: khi lỗi ở bước tải -> kiểm tra cookie thật (checkDouyinCookieAlive)
+- [x] Cookie chết -> báo rõ "Cookie Douyin hết hạn — cập nhật ở Cài đặt rồi Thử lại" + cờ cookieHint
+- [x] UI: nút "⚙️ Cập nhật cookie" mở thẳng mục Cài đặt + kiểm tra lại
+- [x] Test + commit (verify hàm phát hiện: thật→alive, giả→dead, khôi phục→alive)
 
 ### #3 — Chọn giọng nam/nữ + tốc độ đọc (mỗi video)  `[ ]`
 - [ ] Tải thêm giọng (nam/nữ) trong `npm run setup`
@@ -71,4 +71,5 @@ Mục tiêu: sửa phụ đề không còn "mù", giảm số lần render lại
 ---
 
 ## Nhật ký
-- 2026-06-11 — #1 Preview video + nghe thử trong editor — (commit kế tiếp) — test API OK
+- 2026-06-11 — #1 Preview video + nghe thử trong editor — fbf4941 — test API OK
+- 2026-06-11 — #2 Báo cookie hết hạn khi job tải lỗi — (commit kế tiếp) — verify hàm check OK

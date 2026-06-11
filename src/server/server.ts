@@ -7,8 +7,6 @@ import { ROOT, DIRS, ensureDirs } from "../config.js";
 import { log } from "../util/log.js";
 import { synth, piperReady } from "../util/piper.js";
 import { getTrends } from "../trends/index.js";
-import { DOUYIN_API_BASES } from "../config.js";
-import { checkCookieAlive } from "../trends/douyinApi.js";
 import { listAccounts, addAccount, removeAccount } from "./accounts.js";
 import { setDouyinCookie, getDouyinCookie, cookieSource } from "./settings.js";
 import {
@@ -16,12 +14,8 @@ import {
   stopDouyinApi,
   restartDouyinApi,
   douyinApiInstalled,
-  isDouyinApiUp,
-  DOUYIN_API_LOCAL_BASE,
+  checkDouyinCookieAlive,
 } from "./douyinSidecar.js";
-
-// sec_user_id de test cookie khi danh sach kenh trong (1 kenh Douyin pho bien co san).
-const FALLBACK_SEC = "MS4wLjABAAAAeRbRWRWru7IIlwdFmkzGFxWTtAZ-iN4lgoZrxSHGdN8";
 import {
   createJob,
   renderJob,
@@ -65,18 +59,10 @@ export function startServer(): void {
 
   // Kiem tra token con song hay het han (test that vao Douyin API).
   app.get("/api/settings/check", async (_req, res) => {
-    const cookie = getDouyinCookie();
-    const hasCookie = cookie.length > 0;
+    const hasCookie = getDouyinCookie().length > 0;
     if (!hasCookie) return res.json({ hasCookie: false, tested: true, alive: false });
-
-    // Uu tien test qua self-host (phan anh dung cookie); neu khong chay -> dung public.
-    const selfUp = await isDouyinApiUp();
-    const base = selfUp ? DOUYIN_API_LOCAL_BASE : DOUYIN_API_BASES.find((b) => !b.includes("127.0.0.1"));
-    if (!base) return res.json({ hasCookie: true, tested: false, alive: false });
-
-    const sec = listAccounts().find((a) => a.secUserId)?.secUserId ?? FALLBACK_SEC;
-    const alive = await checkCookieAlive(base, sec);
-    res.json({ hasCookie: true, tested: true, alive, viaSelfHost: selfUp });
+    const { tested, alive } = await checkDouyinCookieAlive();
+    res.json({ hasCookie: true, tested, alive });
   });
 
   app.post("/api/settings", async (req, res) => {

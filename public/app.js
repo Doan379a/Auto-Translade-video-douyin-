@@ -297,7 +297,8 @@ function jobCard(j) {
   else if (j.status === "done") right = `<video src="${j.videoUrl}" controls></video>
      <a href="${j.videoUrl}" download><button class="secondary">⬇ Tải</button></a>` +
      (j.metaUrl ? `<button class="secondary" data-act="meta">📋 Tiêu đề/mô tả</button>` : "");
-  else if (j.status === "error") right = `<button data-act="retry">Thử lại</button>`;
+  else if (j.status === "error") right = `<button data-act="retry">Thử lại</button>` +
+     (j.cookieHint ? `<button class="secondary" data-act="fixcookie">⚙️ Cập nhật cookie</button>` : "");
 
   el.innerHTML = `
     <input type="checkbox" class="jobchk" ${selectedJobs.has(j.id) ? "checked" : ""} title="Chọn để gỡ" />
@@ -321,6 +322,13 @@ function jobCard(j) {
   if (retryBtn) retryBtn.addEventListener("click", () => createJobs([{ url: j.url, title: j.title }]));
   const metaBtn = el.querySelector('[data-act="meta"]');
   if (metaBtn) metaBtn.addEventListener("click", () => showMeta(j.metaUrl));
+  const fixBtn = el.querySelector('[data-act="fixcookie"]');
+  if (fixBtn) fixBtn.addEventListener("click", () => {
+    switchTab("trends");
+    const p = $("#settingsPanel");
+    if (p) { p.open = true; p.scrollIntoView({ behavior: "smooth" }); }
+    loadSettings();
+  });
   el.querySelector('[data-act="del"]').addEventListener("click", () => deleteJobs([j.id], j.title));
   return el;
 }
