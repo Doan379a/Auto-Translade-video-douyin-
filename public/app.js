@@ -14,6 +14,7 @@ const STAGE_VI = {
   translate: "Đang dịch…", subtitle: "Đang tạo phụ đề…",
   bgm: "Đang tách nhạc nền…", tts: "Đang lồng tiếng…",
   mux: "Đang ghép video…", metadata: "Đang tạo tiêu đề/mô tả…",
+  thumbnail: "Đang tạo ảnh bìa…",
 };
 const STATUS_VI = {
   queued: "Trong hàng đợi", preparing: "Đang chuẩn bị", review: "Chờ duyệt phụ đề",
@@ -298,8 +299,9 @@ function jobCard(j) {
 
   let right = "";
   if (j.status === "review") right = `<button class="primary" data-act="edit">Duyệt & sửa phụ đề</button>`;
-  else if (j.status === "done") right = `<video src="${j.videoUrl}" controls></video>
+  else if (j.status === "done") right = `<video src="${j.videoUrl}"${j.thumbUrl ? ` poster="${j.thumbUrl}"` : ""} controls></video>
      <a href="${j.videoUrl}" download><button class="secondary">⬇ Video</button></a>` +
+     (j.thumbUrl ? `<a href="${j.thumbUrl}" download><button class="secondary">⬇ Ảnh bìa</button></a>` : "") +
      (j.srtUrl ? `<a href="${j.srtUrl}" download><button class="secondary">⬇ SRT</button></a>` : "") +
      (j.metaUrl ? `<button class="secondary" data-act="meta">📋 Tiêu đề/mô tả</button>` : "") +
      (j.metaUrl ? `<a href="${j.metaUrl}" download><button class="secondary">⬇ Mô tả</button></a>` : "");

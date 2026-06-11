@@ -28,6 +28,7 @@ export interface Job {
   videoUrl?: string;
   metaUrl?: string; // /output/<id>.meta.json neu co
   srtUrl?: string; // /output/<id>.srt neu co
+  thumbUrl?: string; // /output/<id>.jpg (anh bia) neu co
   error?: string;
   cookieHint?: boolean; // loi co kha nang do cookie Douyin het han
   voice?: string; // giong doc da chon
@@ -101,6 +102,7 @@ function loadPersisted(): void {
         if (jobs.has(id)) continue;
         const metaExists = fs.existsSync(path.join(DIRS.output, `${id}.meta.json`));
         const srtExists = fs.existsSync(path.join(DIRS.output, `${id}.srt`));
+        const thumbExists = fs.existsSync(path.join(DIRS.output, `${id}.jpg`));
         const stat = fs.statSync(path.join(DIRS.output, f));
         jobs.set(id, {
           id,
@@ -110,6 +112,7 @@ function loadPersisted(): void {
           videoUrl: `/output/${id}.mp4`,
           metaUrl: metaExists ? `/output/${id}.meta.json` : undefined,
           srtUrl: srtExists ? `/output/${id}.srt` : undefined,
+          thumbUrl: thumbExists ? `/output/${id}.jpg` : undefined,
           createdAt: stat.mtimeMs,
         });
       }
@@ -250,6 +253,7 @@ export function renderJob(
       j.videoUrl = `/output/${id}.mp4`;
       if (result.metaPath) j.metaUrl = `/output/${id}.meta.json`;
       if (fs.existsSync(path.join(DIRS.output, `${id}.srt`))) j.srtUrl = `/output/${id}.srt`;
+      if (fs.existsSync(path.join(DIRS.output, `${id}.jpg`))) j.thumbUrl = `/output/${id}.jpg`;
       emit(j);
     } catch (e) {
       j.status = "error";
@@ -267,6 +271,7 @@ export function deleteJob(id: string): void {
   fs.rmSync(path.join(DIRS.output, `${id}.mp4`), { force: true });
   fs.rmSync(path.join(DIRS.output, `${id}.meta.json`), { force: true });
   fs.rmSync(path.join(DIRS.output, `${id}.srt`), { force: true });
+  fs.rmSync(path.join(DIRS.output, `${id}.jpg`), { force: true });
   jobEvents.emit("delete", id);
   persist();
   log.ok(`Da xoa job + file: ${id}`);

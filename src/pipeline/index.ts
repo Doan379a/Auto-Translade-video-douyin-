@@ -17,6 +17,7 @@ import { buildSrt } from "./subtitle.js";
 import { synthDubTrack } from "./tts.js";
 import { separateBgm } from "./bgm.js";
 import { generateMetadata } from "./metadata.js";
+import { generateThumbnail } from "./thumbnail.js";
 import { mux } from "./mux.js";
 import type { DubResult, Segment } from "./types.js";
 
@@ -192,16 +193,27 @@ export async function renderVideo(
 
   // Metadata dang video (tieu de/mo ta/hashtag) -> output/<id>.meta.json
   let metaPath: string | undefined;
+  let metaTitle = "";
   if (CONFIG.GEN_METADATA === "true") {
     onProgress({ stage: "metadata" });
     try {
       const meta = await generateMetadata(segments, targetLang);
+      metaTitle = meta.title;
       metaPath = path.join(DIRS.output, `${awemeId}.meta.json`);
       fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));
       log.ok(`Metadata: ${meta.title}`);
     } catch (e) {
       log.warn(`Bo qua metadata (${(e as Error).message})`);
     }
+  }
+
+  // Anh bia (thumbnail) -> output/<id>.jpg (khung hinh + tieu de neu co)
+  onProgress({ stage: "thumbnail" });
+  const thumbTitle = metaTitle || segments.find((s) => (s.translated ?? "").trim())?.translated || "";
+  try {
+    await generateThumbnail(sourceVideo, thumbTitle, path.join(DIRS.output, `${awemeId}.jpg`), workDir);
+  } catch (e) {
+    log.warn(`Bo qua anh bia (${(e as Error).message})`);
   }
 
   log.ok(`=== Hoan tat: ${outPath} ===`);
