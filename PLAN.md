@@ -50,10 +50,10 @@ Mục tiêu: sửa phụ đề không còn "mù", giảm số lần render lại
 - [x] collectSegments dùng editSegs (sort theo thời gian); nghe thử/sub dùng editSegs
 - [x] Test + commit (node --check OK; logic mảng thuần)
 
-### #5 — Bảo mật cookie + (tùy chọn) mật khẩu web  `[ ]`
-- [ ] Không trả full cookie khi request không phải localhost
-- [ ] (tùy chọn) mật khẩu đơn giản bảo vệ web khi mở ra LAN
-- [ ] Test + commit
+### #5 — Bảo mật cookie + (tùy chọn) mật khẩu web  [x] XONG
+- [x] GET /api/settings chỉ trả cookie đầy đủ khi localhost; từ xa -> ẩn (cookieHidden)
+- [x] WEB_PASSWORD (Basic Auth) bảo vệ web khi truy cập từ xa; localhost được miễn
+- [x] Test + commit (localhost 200+cookie; LAN ko pass→401; LAN có pass→200 cookie ẩn)
 
 ### #6 — Quản lý dung lượng từ web  `[ ]`
 - [ ] Hiện dung lượng work/ + output/
@@ -75,4 +75,5 @@ Mục tiêu: sửa phụ đề không còn "mù", giảm số lần render lại
 - 2026-06-11 — #1 Preview video + nghe thử trong editor — fbf4941 — test API OK
 - 2026-06-11 — #2 Báo cookie hết hạn khi job tải lỗi — 8a19a37 — verify hàm check OK
 - 2026-06-11 — #3 Chọn giọng + tốc độ đọc — 39ff93f — test 2 giọng + tốc độ OK
-- 2026-06-11 — #4 Sửa timing + gộp/tách câu — (commit kế tiếp) — node --check OK
+- 2026-06-11 — #4 Sửa timing + gộp/tách câu — 01bb768 — node --check OK
+- 2026-06-11 — #5 Bảo mật cookie + mật khẩu web — (commit kế tiếp) — test localhost/LAN OK

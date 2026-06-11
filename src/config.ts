@@ -70,6 +70,11 @@ const EnvSchema = z.object({
   // Sinh tieu de / mo ta / hashtag tu ban dich (ghi output/<id>.meta.json): "true" | "false"
   GEN_METADATA: z.string().default("true"),
 
+  // --- Bao mat web ---
+  // Mat khau bao ve web khi mo ra mang LAN (de trong = khong yeu cau).
+  // May chu (localhost) luon duoc mien. Cookie Douyin chi hien day du khi truy cap localhost.
+  WEB_PASSWORD: z.string().default(""),
+
   // --- Tai video ---
   // Lay cookies tu trinh duyet de qua duoc chan cua Douyin: "" | "chrome" | "edge" | "firefox"
   YTDLP_COOKIES_FROM_BROWSER: z.string().default(""),

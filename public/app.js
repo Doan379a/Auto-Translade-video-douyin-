@@ -55,6 +55,9 @@ async function loadSettings() {
   try {
     const s = await fetch("/api/settings").then((r) => r.json());
     $("#cookieValue").value = s.cookie || "";
+    $("#cookieValue").placeholder = s.cookieHidden
+      ? "•••• (đã đặt — ẩn vì đang truy cập từ xa, gõ cookie mới để thay)"
+      : "Dán cookie Douyin vào đây (1 dòng dài)...";
     if (!s.hasCookie) {
       setBadge("Chưa có", "var(--amber)");
       setCookieLocked(false);

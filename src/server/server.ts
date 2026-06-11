@@ -30,10 +30,30 @@ import {
 
 const PORT = Number(process.env.PORT) || 5173;
 
+// Request co phai tu chinh may chu (localhost) khong.
+function isLocalReq(req: express.Request): boolean {
+  const ip = req.socket.remoteAddress || "";
+  return ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1";
+}
+
 export function startServer(): void {
   ensureDirs();
   const app = express();
   app.use(express.json({ limit: "5mb" }));
+
+  // --- Bao ve bang mat khau khi mo ra LAN (localhost luon duoc mien) ---
+  if (CONFIG.WEB_PASSWORD) {
+    log.info("Web duoc bao ve bang mat khau (WEB_PASSWORD) cho truy cap tu xa.");
+    app.use((req, res, next) => {
+      if (isLocalReq(req)) return next();
+      const m = (req.headers.authorization || "").match(/^Basic (.+)$/);
+      if (m) {
+        const pass = Buffer.from(m[1], "base64").toString().split(":").slice(1).join(":");
+        if (pass === CONFIG.WEB_PASSWORD) return next();
+      }
+      res.set("WWW-Authenticate", 'Basic realm="trend-dub"').status(401).send("Can mat khau");
+    });
+  }
 
   // --- Trends ---
   app.get("/api/trends", async (req, res) => {
@@ -47,13 +67,15 @@ export function startServer(): void {
   });
 
   // --- Cai dat (cookie Douyin) — de khong phai sua .env tay ---
-  // Tra ve token DAY DU de UI dien san (cong cu noi bo, localhost).
-  app.get("/api/settings", (_req, res) => {
+  // Chi tra cookie DAY DU khi truy cap tu localhost (may chu). Tu xa -> an de khong lo.
+  app.get("/api/settings", (req, res) => {
     const cookie = getDouyinCookie();
+    const local = isLocalReq(req);
     res.json({
       source: cookieSource(), // settings | env | none
       hasCookie: cookie.length > 0,
-      cookie, // gia tri day du de dien vao o (khoa lai khi con song)
+      cookie: local ? cookie : "", // chi dien san khi o may chu
+      cookieHidden: !local && cookie.length > 0, // tu xa: co cookie nhung an
       apiInstalled: douyinApiInstalled(),
     });
   });
