@@ -35,6 +35,91 @@ $("#addLinkBtn").addEventListener("click", addLink);
 $("#linkInput").addEventListener("keydown", (e) => { if (e.key === "Enter") addLink(); });
 $("#processBtn").addEventListener("click", processSelected);
 
+// ====== Cai dat: cookie Douyin (kiem tra song/chet, khoa khi con hieu luc) ======
+$("#cookieSaveBtn").addEventListener("click", saveCookie);
+$("#cookieEditBtn").addEventListener("click", unlockCookie);
+
+// Dat trang thai o token: locked = co tich + khoa; mo = cho sua.
+function setCookieLocked(locked) {
+  $("#cookieValue").readOnly = locked;
+  $("#cookieSaveBtn").style.display = locked ? "none" : "";
+  $("#cookieEditBtn").style.display = locked ? "" : "none";
+}
+function setBadge(text, color) {
+  const b = $("#cookieState");
+  b.textContent = text;
+  b.style.color = color || "";
+}
+
+async function loadSettings() {
+  try {
+    const s = await fetch("/api/settings").then((r) => r.json());
+    $("#cookieValue").value = s.cookie || "";
+    if (!s.hasCookie) {
+      setBadge("Chưa có", "var(--amber)");
+      setCookieLocked(false);
+      $("#cookieStatus").textContent = "Chưa có token — dán cookie Douyin vào rồi bấm Lưu.";
+      return;
+    }
+    // Co token -> kiem tra con song khong
+    setBadge("⏳ kiểm tra…");
+    $("#cookieStatus").textContent = "Đang kiểm tra token…";
+    await checkCookie(s.apiInstalled);
+  } catch {
+    setBadge("?");
+    setCookieLocked(false);
+  }
+}
+
+async function checkCookie(apiInstalled) {
+  try {
+    const c = await fetch("/api/settings/check").then((r) => r.json());
+    if (!c.hasCookie) {
+      setBadge("Chưa có", "var(--amber)"); setCookieLocked(false);
+      $("#cookieStatus").textContent = "Chưa có token — dán vào rồi Lưu.";
+    } else if (!c.tested) {
+      setBadge("? chưa rõ", "var(--amber)"); setCookieLocked(false);
+      $("#cookieStatus").textContent = "Chưa kiểm tra được (API Douyin chưa chạy). Bạn vẫn có thể cập nhật token.";
+    } else if (c.alive) {
+      setBadge("Đang hoạt động ✓", "var(--green)"); setCookieLocked(true);
+      $("#cookieStatus").textContent = "Token còn hiệu lực — đã khóa. Bấm \"Đổi token khác\" nếu muốn thay.";
+    } else {
+      setBadge("Hết hạn ⚠", "var(--red)"); setCookieLocked(false);
+      $("#cookieStatus").textContent = "⚠ Token đã hết hạn / không dùng được — dán token mới rồi bấm Lưu.";
+      $("#settingsPanel").open = true; // tu mo panel cho de thay
+    }
+  } catch {
+    setBadge("?"); setCookieLocked(false);
+  }
+}
+
+function unlockCookie() {
+  setCookieLocked(false);
+  const ta = $("#cookieValue");
+  ta.focus();
+  $("#cookieStatus").textContent = "Đang sửa token — dán token mới rồi bấm Lưu (để trống = xóa token).";
+}
+
+async function saveCookie() {
+  const douyinCookie = $("#cookieValue").value.trim();
+  const btn = $("#cookieSaveBtn");
+  btn.disabled = true; btn.textContent = "Đang áp dụng…";
+  $("#cookieStatus").textContent = "Đang lưu & khởi động lại API Douyin…";
+  try {
+    const res = await fetch("/api/settings", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ douyinCookie }),
+    });
+    const s = await res.json();
+    if (!res.ok) throw new Error(s.error || "Lỗi lưu cookie");
+    await loadSettings(); // dien lai + kiem tra lai trang thai
+  } catch (e) {
+    $("#cookieStatus").textContent = "Lỗi: " + e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = "Lưu & áp dụng";
+  }
+}
+
 // ====== Quan ly kenh theo doi ======
 $("#chAddBtn").addEventListener("click", addChannel);
 $("#chValue").addEventListener("keydown", (e) => { if (e.key === "Enter") addChannel(); });
@@ -351,4 +436,5 @@ $("#delSelBtn").addEventListener("click", () => deleteJobs([...selectedJobs]));
 // ====== Init ======
 loadJobs();
 loadAccounts();
+loadSettings();
 connectSSE();

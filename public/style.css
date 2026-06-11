@@ -123,7 +123,11 @@ button.danger:hover:not(:disabled) { border-color: var(--red); }
 }
 .channels summary { cursor: pointer; font-size: 14px; font-weight: 600; user-select: none; }
 .channels summary::-webkit-details-marker { color: var(--accent); }
-.ch-add { display: flex; gap: 10px; margin: 12px 0; flex-wrap: wrap; }
+.ch-add { display: flex; gap: 10px; margin: 12px 0; flex-wrap: wrap; align-items: center; }
+.ch-add textarea {
+  flex: 1; width: 100%; background: var(--panel); border: 1px solid var(--line); color: var(--text);
+  border-radius: 8px; padding: 9px 12px; font-size: 13px; font-family: inherit; resize: vertical;
+}
 .ch-add input.ch-name { min-width: 180px; flex: none; }
 .ch-add input { flex: 1; }
 .ch-list { display: flex; flex-direction: column; gap: 8px; }

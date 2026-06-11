@@ -102,6 +102,24 @@ export async function fetchUserPostVideos(
     .filter((v): v is TrendVideo => v !== null);
 }
 
+// Kiem tra cookie con song: goi thu fetch_user_post_videos vao 1 BASE cu the
+// (thuong la self-host de phan anh dung cookie). Tra ve true neu lay duoc video.
+export async function checkCookieAlive(base: string, secUserId: string): Promise<boolean> {
+  try {
+    const res: any = await getJson(
+      base,
+      "/api/douyin/web/fetch_user_post_videos",
+      { sec_user_id: secUserId, max_cursor: 0, count: 1 },
+      15000
+    );
+    const data = res?.data ?? res;
+    const list: any[] = data?.aweme_list ?? data?.data?.aweme_list ?? data?.videos ?? [];
+    return Array.isArray(list) && list.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 // Parse 1 video bat ky (lay metadata + link). Dung cho buoc tai.
 export async function getVideoData(url: string): Promise<any> {
   const res = await tryBases<any>(

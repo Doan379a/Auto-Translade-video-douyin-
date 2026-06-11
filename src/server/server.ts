@@ -4,8 +4,21 @@ import express from "express";
 import { ROOT, DIRS, ensureDirs } from "../config.js";
 import { log } from "../util/log.js";
 import { getTrends } from "../trends/index.js";
+import { DOUYIN_API_BASES } from "../config.js";
+import { checkCookieAlive } from "../trends/douyinApi.js";
 import { listAccounts, addAccount, removeAccount } from "./accounts.js";
-import { ensureDouyinApi, stopDouyinApi } from "./douyinSidecar.js";
+import { setDouyinCookie, getDouyinCookie, cookieSource } from "./settings.js";
+import {
+  ensureDouyinApi,
+  stopDouyinApi,
+  restartDouyinApi,
+  douyinApiInstalled,
+  isDouyinApiUp,
+  DOUYIN_API_LOCAL_BASE,
+} from "./douyinSidecar.js";
+
+// sec_user_id de test cookie khi danh sach kenh trong (1 kenh Douyin pho bien co san).
+const FALLBACK_SEC = "MS4wLjABAAAAeRbRWRWru7IIlwdFmkzGFxWTtAZ-iN4lgoZrxSHGdN8";
 import {
   createJob,
   renderJob,
@@ -32,6 +45,50 @@ export function startServer(): void {
       res.json(vids);
     } catch (e) {
       res.status(500).json({ error: (e as Error).message });
+    }
+  });
+
+  // --- Cai dat (cookie Douyin) — de khong phai sua .env tay ---
+  // Tra ve token DAY DU de UI dien san (cong cu noi bo, localhost).
+  app.get("/api/settings", (_req, res) => {
+    const cookie = getDouyinCookie();
+    res.json({
+      source: cookieSource(), // settings | env | none
+      hasCookie: cookie.length > 0,
+      cookie, // gia tri day du de dien vao o (khoa lai khi con song)
+      apiInstalled: douyinApiInstalled(),
+    });
+  });
+
+  // Kiem tra token con song hay het han (test that vao Douyin API).
+  app.get("/api/settings/check", async (_req, res) => {
+    const cookie = getDouyinCookie();
+    const hasCookie = cookie.length > 0;
+    if (!hasCookie) return res.json({ hasCookie: false, tested: true, alive: false });
+
+    // Uu tien test qua self-host (phan anh dung cookie); neu khong chay -> dung public.
+    const selfUp = await isDouyinApiUp();
+    const base = selfUp ? DOUYIN_API_LOCAL_BASE : DOUYIN_API_BASES.find((b) => !b.includes("127.0.0.1"));
+    if (!base) return res.json({ hasCookie: true, tested: false, alive: false });
+
+    const sec = listAccounts().find((a) => a.secUserId)?.secUserId ?? FALLBACK_SEC;
+    const alive = await checkCookieAlive(base, sec);
+    res.json({ hasCookie: true, tested: true, alive, viaSelfHost: selfUp });
+  });
+
+  app.post("/api/settings", async (req, res) => {
+    try {
+      setDouyinCookie(String(req.body?.douyinCookie ?? ""));
+      const apiUp = await restartDouyinApi(); // nap cookie moi vao API self-host
+      res.json({
+        ok: true,
+        source: cookieSource(),
+        hasCookie: getDouyinCookie().length > 0,
+        apiInstalled: douyinApiInstalled(),
+        apiUp,
+      });
+    } catch (e) {
+      res.status(400).json({ error: (e as Error).message });
     }
   });
 

@@ -28,6 +28,12 @@ work/
 # Cache duoc sinh ra (resolve sec_user_id...) - khong commit
 data/*.cache.json
 
+# Settings dat tu web (co the chua cookie Douyin nhay cam) - KHONG commit
+data/settings.json
+
+# Trang thai job (sinh ra luc chay, may-specific) - KHONG commit
+data/jobs.json
+
 # Logs / OS
 *.log
 .DS_Store

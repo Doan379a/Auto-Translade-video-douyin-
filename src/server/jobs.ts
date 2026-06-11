@@ -3,7 +3,7 @@ import { EventEmitter } from "node:events";
 import fs from "node:fs";
 import path from "node:path";
 import { prepareVideo, renderVideo, deriveId } from "../pipeline/index.js";
-import { DIRS } from "../config.js";
+import { DIRS, ROOT } from "../config.js";
 import { log } from "../util/log.js";
 import type { Segment } from "../pipeline/types.js";
 
@@ -33,9 +33,84 @@ export interface Job {
 export const jobEvents = new EventEmitter();
 const jobs = new Map<string, Job>();
 
+// --- Luu job ra dia de KHONG mat danh sach khi restart server ---
+const JOBS_FILE = path.join(ROOT, "data", "jobs.json");
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+function persist(): void {
+  if (persistTimer) return; // gom nhieu thay doi gan nhau thanh 1 lan ghi
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    try {
+      fs.mkdirSync(path.dirname(JOBS_FILE), { recursive: true });
+      fs.writeFileSync(JOBS_FILE, JSON.stringify([...jobs.values()], null, 2));
+    } catch (e) {
+      log.warn(`Khong luu duoc jobs.json: ${(e as Error).message}`);
+    }
+  }, 500);
+}
+
 function emit(job: Job): void {
   jobEvents.emit("update", job);
+  persist();
 }
+
+// Nap lai job da luu + quet output/ khi khoi dong (chay 1 lan luc import module).
+function loadPersisted(): void {
+  // 1. Tu data/jobs.json
+  try {
+    if (fs.existsSync(JOBS_FILE)) {
+      const arr: Job[] = JSON.parse(fs.readFileSync(JOBS_FILE, "utf8"));
+      for (const j of arr) {
+        // Job dang chay luc tat server -> da bi gian doan
+        if (j.status === "queued" || j.status === "preparing" || j.status === "rendering") {
+          if (j.segments && j.segments.length) {
+            j.status = "review"; // da co phu de -> cho duyet/render lai
+          } else {
+            j.status = "error";
+            j.error = "Bi gian doan khi khoi dong lai server — bam Thu lai";
+          }
+          j.stage = undefined;
+          j.done = undefined;
+          j.total = undefined;
+        }
+        // Job done nhung file video khong con
+        if (j.status === "done" && !fs.existsSync(path.join(DIRS.output, `${j.id}.mp4`))) {
+          j.status = "error";
+          j.error = "File video khong con trong output/";
+          j.videoUrl = undefined;
+        }
+        jobs.set(j.id, j);
+      }
+    }
+  } catch (e) {
+    log.warn(`Khong doc duoc jobs.json: ${(e as Error).message}`);
+  }
+
+  // 2. Quet output/ -> them video cu chua co trong danh sach
+  try {
+    if (fs.existsSync(DIRS.output)) {
+      for (const f of fs.readdirSync(DIRS.output)) {
+        if (!f.endsWith(".mp4")) continue;
+        const id = f.replace(/\.mp4$/, "");
+        if (jobs.has(id)) continue;
+        const metaExists = fs.existsSync(path.join(DIRS.output, `${id}.meta.json`));
+        const stat = fs.statSync(path.join(DIRS.output, f));
+        jobs.set(id, {
+          id,
+          url: "",
+          title: id,
+          status: "done",
+          videoUrl: `/output/${id}.mp4`,
+          metaUrl: metaExists ? `/output/${id}.meta.json` : undefined,
+          createdAt: stat.mtimeMs,
+        });
+      }
+    }
+  } catch (e) {
+    log.warn(`Khong quet duoc output/: ${(e as Error).message}`);
+  }
+}
+loadPersisted();
 
 export function listJobs(): Job[] {
   return [...jobs.values()].sort((a, b) => b.createdAt - a.createdAt);
@@ -152,6 +227,7 @@ export function deleteJob(id: string): void {
   fs.rmSync(path.join(DIRS.output, `${id}.mp4`), { force: true });
   fs.rmSync(path.join(DIRS.output, `${id}.meta.json`), { force: true });
   jobEvents.emit("delete", id);
+  persist();
   log.ok(`Da xoa job + file: ${id}`);
 }
 

@@ -40,14 +40,30 @@ export function listAccounts(): (Account & { key: string })[] {
   return readRaw().accounts.map((a) => ({ ...a, key: accountKey(a) }));
 }
 
-// Them kenh tu 1 gia tri: link (http...) -> url; con lai (MS4w...) -> secUserId.
+// Them kenh tu 1 gia tri nguoi dung dan (co the la link sach, secUserId,
+// HOAC ca doan caption chia se co link lan ben trong). Tu trich ra phan hop le:
+//   1. Uu tien sec_user_id (MS4w...) tim thay bat ky dau (ke ca trong link /user/...)
+//   2. Neu khong co -> trich URL dau tien trong chuoi
+//   3. Khong co gi -> bao loi ro rang
 export function addAccount(value: string, name = ""): Account & { key: string } {
-  const v = (value || "").trim();
-  if (!v) throw new Error("Thieu link hoac ID kenh");
+  const raw = (value || "").trim();
+  if (!raw) throw new Error("Thieu link hoac ID kenh");
 
-  const acc: Account = { name: name.trim() || v.slice(0, 40) };
-  if (/^https?:\/\//i.test(v)) acc.url = v;
-  else acc.secUserId = v;
+  const sec = raw.match(/MS4w[A-Za-z0-9_-]{20,}/);
+  const url = raw.match(/https?:\/\/[^\s]+/);
+
+  const acc: Account = { name: name.trim() };
+  if (sec) {
+    acc.secUserId = sec[0];
+  } else if (url) {
+    acc.url = url[0].replace(/[)\].,!?；。]+$/, ""); // bo dau cau dinh cuoi link
+  } else {
+    throw new Error(
+      "Khong tim thay link kenh (https://...) hoac secUserId (MS4w...) trong noi dung da dan. " +
+        "Hay dan link TRANG CA NHAN cua kenh, vd: https://www.douyin.com/user/MS4w..."
+    );
+  }
+  if (!acc.name) acc.name = acc.secUserId ? acc.secUserId.slice(0, 14) + "…" : acc.url!;
 
   const data = readRaw();
   const key = accountKey(acc);

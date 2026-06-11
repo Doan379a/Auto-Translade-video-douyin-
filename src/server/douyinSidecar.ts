@@ -4,16 +4,18 @@ import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { ROOT, CONFIG } from "../config.js";
+import { ROOT } from "../config.js";
 import { log } from "../util/log.js";
+import { getDouyinCookie } from "./settings.js";
 
 export const DOUYIN_API_PORT = 8642;
 const API_DIR = path.join(ROOT, "vendor", "douyin-api");
 let child: ChildProcess | null = null;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// Nhet cookie Douyin that (tu .env) vao config cua crawler -> tai on dinh, het 400.
+// Nhet cookie Douyin (dat tu web settings, fallback .env) vao config crawler -> tai on dinh, het 400.
 export function applyDouyinCookie(): void {
-  const cookie = CONFIG.DOUYIN_COOKIE.trim();
+  const cookie = getDouyinCookie();
   if (!cookie) return;
   const cfg = path.join(API_DIR, "crawlers", "douyin", "web", "config.yaml");
   if (!fs.existsSync(cfg)) return;
@@ -36,15 +38,22 @@ export function douyinApiInstalled(): boolean {
   return fs.existsSync(pythonBin()) && fs.existsSync(path.join(API_DIR, "app", "main.py"));
 }
 
+export const DOUYIN_API_LOCAL_BASE = `http://127.0.0.1:${DOUYIN_API_PORT}`;
+
 async function isUp(): Promise<boolean> {
   try {
-    const r = await fetch(`http://127.0.0.1:${DOUYIN_API_PORT}/docs`, {
+    const r = await fetch(`${DOUYIN_API_LOCAL_BASE}/docs`, {
       signal: AbortSignal.timeout(2000),
     });
     return r.ok;
   } catch {
     return false;
   }
+}
+
+// Public: API Douyin self-host co dang chay khong (de quyet dinh kiem tra cookie o dau).
+export function isDouyinApiUp(): Promise<boolean> {
+  return isUp();
 }
 
 // Bao dam API dang chay; tra ve true neu san sang.
@@ -84,4 +93,21 @@ export function stopDouyinApi(): void {
     child.kill();
     child = null;
   }
+}
+
+// Khoi dong lai API Douyin de nap cookie/config moi (goi sau khi luu cookie tu web).
+// Tra ve true neu API self-host len lai duoc (khong thi dung public fallback).
+export async function restartDouyinApi(): Promise<boolean> {
+  if (!douyinApiInstalled()) {
+    // Khong co self-host -> chi co the dung API public; cookie chua dung den.
+    return false;
+  }
+  log.step("Khoi dong lai API Douyin de nap cookie moi...");
+  stopDouyinApi();
+  // Cho cong tat han truoc khi bat lai.
+  for (let i = 0; i < 20; i++) {
+    if (!(await isUp())) break;
+    await sleep(500);
+  }
+  return ensureDouyinApi();
 }
