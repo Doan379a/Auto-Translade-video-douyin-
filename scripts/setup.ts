@@ -63,26 +63,42 @@ async function setupPiper(): Promise<void> {
   console.log("✓ Piper san sang.");
 }
 
-async function setupVoice(): Promise<void> {
-  const voice = CONFIG.PIPER_VOICE; // vd vi_VN-vais1000-medium
+// Tai 1 giong piper (best-effort). extra=true -> chi canh bao neu loi, khong dung setup.
+async function downloadVoice(voice: string, extra = false): Promise<void> {
   const onnx = path.join(DIRS.voices, `${voice}.onnx`);
   const json = path.join(DIRS.voices, `${voice}.onnx.json`);
   if (fs.existsSync(onnx) && fs.existsSync(json)) {
     console.log(`✓ Giong ${voice} da co, bo qua.`);
     return;
   }
-  // Phan tich ten: vi_VN-vais1000-medium -> lang=vi_VN, name=vais1000, quality=medium
+  // Phan tich ten: vi_VN-vais1000-medium -> lang=vi, region=VN, name=vais1000, quality=medium
   const m = voice.match(/^([a-z]{2})_([A-Z]{2})-(.+)-(low|medium|high|x_low)$/);
   if (!m) {
-    console.log(`! Khong tu suy ra duoc URL cho giong "${voice}". Tai thu cong vao thu muc voices/.`);
+    console.log(`! Khong tu suy ra duoc URL cho giong "${voice}". Tai thu cong vao voices/.`);
     return;
   }
   const [, lang, region, name, quality] = m;
   const base = `https://huggingface.co/rhasspy/piper-voices/resolve/main/${lang}/${lang}_${region}/${name}/${quality}/${voice}`;
   console.log(`• Tai giong ${voice}`);
-  await download(`${base}.onnx`, onnx);
-  await download(`${base}.onnx.json`, json);
-  console.log("✓ Giong san sang.");
+  try {
+    await download(`${base}.onnx`, onnx);
+    await download(`${base}.onnx.json`, json);
+    console.log("✓ Giong san sang.");
+  } catch (e) {
+    fs.rmSync(onnx, { force: true });
+    if (extra) console.log(`! Bo qua giong phu ${voice} (${(e as Error).message})`);
+    else throw e;
+  }
+}
+
+// Cac giong tieng Viet khac de nguoi dung CHON tren web (giong/sac thai khac nhau).
+const EXTRA_VOICES = ["vi_VN-25hours_single-low"];
+
+async function setupVoice(): Promise<void> {
+  await downloadVoice(CONFIG.PIPER_VOICE); // giong mac dinh (bat buoc)
+  for (const v of EXTRA_VOICES) {
+    if (v !== CONFIG.PIPER_VOICE) await downloadVoice(v, true); // giong phu (tuy chon)
+  }
 }
 
 // Tim python tren he thong (de tao venv cho API Douyin).

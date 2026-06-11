@@ -20,13 +20,20 @@ async function applyTempo(inWav: string, outWav: string, tempo: number): Promise
 }
 
 // Tra ve duong dan file wav long tieng, hoac null neu khong co gi de doc.
+// opts: chon giong (voice) + toc do doc (speed; 1.0 thuong, >1 nhanh hon).
 export async function synthDubTrack(
   segments: Segment[],
   workDir: string,
-  onProgress?: (done: number, total: number) => void
+  onProgress?: (done: number, total: number) => void,
+  opts: { voice?: string; speed?: number } = {}
 ): Promise<string | null> {
   const withText = segments.filter((s) => (s.translated ?? "").trim().length > 0);
   if (withText.length === 0) return null;
+
+  // Piper length_scale = 1/speed (speed nhanh -> length_scale nho -> doc nhanh).
+  const speed = opts.speed && opts.speed > 0 ? opts.speed : 1.0;
+  const lengthScale = 1 / speed;
+  const synthOpts = { voice: opts.voice, lengthScale };
 
   const ttsDir = path.join(workDir, "tts");
   fs.mkdirSync(ttsDir, { recursive: true });
@@ -41,7 +48,7 @@ export async function synthDubTrack(
   for (let i = 0; i < ordered.length; i++) {
     const s = ordered[i];
     const raw = path.join(ttsDir, `seg_${i}_raw.wav`);
-    await synth(s.translated!, raw);
+    await synth(s.translated!, raw, synthOpts);
     let dur = await probeDuration(raw);
 
     // O trong cho cau nay: tu s.start den khi cau sau bat dau (tru khoang nghi).

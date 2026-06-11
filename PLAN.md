@@ -34,11 +34,11 @@ Mục tiêu: sửa phụ đề không còn "mù", giảm số lần render lại
 - [x] UI: nút "⚙️ Cập nhật cookie" mở thẳng mục Cài đặt + kiểm tra lại
 - [x] Test + commit (verify hàm phát hiện: thật→alive, giả→dead, khôi phục→alive)
 
-### #3 — Chọn giọng nam/nữ + tốc độ đọc (mỗi video)  `[ ]`
-- [ ] Tải thêm giọng (nam/nữ) trong `npm run setup`
-- [ ] Cho chọn giọng + tốc độ (length_scale) ở editor/khi render
-- [ ] Truyền vào synth Piper; cache dub theo giọng
-- [ ] Test + commit
+### #3 — Chọn giọng + tốc độ đọc (mỗi video)  [x] XONG
+- [x] setup tải thêm giọng phụ (vi_VN-25hours_single-low) — best-effort
+- [x] Editor: dropdown chọn giọng + thanh tốc độ; nghe thử + render dùng giọng/tốc độ đã chọn
+- [x] synth Piper nhận voice + length_scale; cache dub theo voice+speed; GET /api/voices
+- [x] Test + commit (2 giọng cho âm khác nhau; tốc độ 1.3× ngắn hơn 1.0×)
 
 ---
 
@@ -72,4 +72,5 @@ Mục tiêu: sửa phụ đề không còn "mù", giảm số lần render lại
 
 ## Nhật ký
 - 2026-06-11 — #1 Preview video + nghe thử trong editor — fbf4941 — test API OK
-- 2026-06-11 — #2 Báo cookie hết hạn khi job tải lỗi — (commit kế tiếp) — verify hàm check OK
+- 2026-06-11 — #2 Báo cookie hết hạn khi job tải lỗi — 8a19a37 — verify hàm check OK
+- 2026-06-11 — #3 Chọn giọng + tốc độ đọc — (commit kế tiếp) — test 2 giọng + tốc độ OK

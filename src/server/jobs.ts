@@ -29,6 +29,8 @@ export interface Job {
   metaUrl?: string; // /output/<id>.meta.json neu co
   error?: string;
   cookieHint?: boolean; // loi co kha nang do cookie Douyin het han
+  voice?: string; // giong doc da chon
+  speed?: number; // toc do doc da chon
   createdAt: number;
 }
 
@@ -202,11 +204,17 @@ export function createJob(url: string, title = ""): Job {
 }
 
 // Render job (sau khi duyet). segments co the la ban da sua.
-export function renderJob(id: string, segments?: Segment[]): Job {
+export function renderJob(
+  id: string,
+  segments?: Segment[],
+  opts?: { voice?: string; speed?: number }
+): Job {
   const job = jobs.get(id);
   if (!job) throw new Error(`Khong co job ${id}`);
   if (segments) job.segments = segments;
   if (!job.segments) throw new Error(`Job ${id} chua co phu de de render`);
+  if (opts?.voice) job.voice = opts.voice;
+  if (opts?.speed) job.speed = opts.speed;
   job.status = "queued";
   emit(job);
 
@@ -215,12 +223,17 @@ export function renderJob(id: string, segments?: Segment[]): Job {
     j.status = "rendering";
     emit(j);
     try {
-      const result = await renderVideo(id, j.segments!, (p) => {
-        j.stage = p.stage;
-        j.done = p.done;
-        j.total = p.total;
-        emit(j);
-      });
+      const result = await renderVideo(
+        id,
+        j.segments!,
+        (p) => {
+          j.stage = p.stage;
+          j.done = p.done;
+          j.total = p.total;
+          emit(j);
+        },
+        { voice: j.voice, speed: j.speed }
+      );
       j.status = "done";
       j.stage = undefined;
       j.done = undefined;

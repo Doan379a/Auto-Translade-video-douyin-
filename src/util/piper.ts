@@ -11,28 +11,45 @@ export function piperBin(): string {
   return path.join(DIRS.bin, "piper", exe);
 }
 
-// Duong dan file giong .onnx
-export function voicePath(): string {
-  return path.join(DIRS.voices, `${CONFIG.PIPER_VOICE}.onnx`);
+// Duong dan file giong .onnx (mac dinh PIPER_VOICE, hoac giong chi dinh).
+export function voicePath(voice?: string): string {
+  return path.join(DIRS.voices, `${voice || CONFIG.PIPER_VOICE}.onnx`);
+}
+
+// Liet ke cac giong da cai (file .onnx trong voices/).
+export function listVoices(): string[] {
+  try {
+    return fs
+      .readdirSync(DIRS.voices)
+      .filter((f) => f.endsWith(".onnx"))
+      .map((f) => f.replace(/\.onnx$/, ""));
+  } catch {
+    return [];
+  }
 }
 
 export function piperReady(): boolean {
   return fs.existsSync(piperBin()) && fs.existsSync(voicePath());
 }
 
-// Tong hop 1 doan text -> file wav.
-export function synth(text: string, outWav: string): Promise<void> {
+// Tong hop 1 doan text -> file wav. opts: chon giong + length_scale (lon hon = doc cham hon).
+export function synth(
+  text: string,
+  outWav: string,
+  opts: { voice?: string; lengthScale?: number } = {}
+): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (!piperReady()) {
+    const model = voicePath(opts.voice);
+    if (!fs.existsSync(piperBin()) || !fs.existsSync(model)) {
       return reject(
-        new Error("Piper chua san sang. Chay `npm run setup` de tai binary + giong.")
+        new Error(`Piper/giong chua san sang (${opts.voice ?? CONFIG.PIPER_VOICE}). Chay \`npm run setup\`.`)
       );
     }
-    const p = spawn(
-      piperBin(),
-      ["--model", voicePath(), "--output_file", outWav],
-      { stdio: ["pipe", "ignore", "pipe"] }
-    );
+    const args = ["--model", model, "--output_file", outWav];
+    if (opts.lengthScale && opts.lengthScale > 0) {
+      args.push("--length_scale", String(opts.lengthScale));
+    }
+    const p = spawn(piperBin(), args, { stdio: ["pipe", "ignore", "pipe"] });
     let err = "";
     p.stderr.on("data", (d) => (err += d));
     p.on("error", reject);

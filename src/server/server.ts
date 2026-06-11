@@ -5,7 +5,8 @@ import crypto from "node:crypto";
 import express from "express";
 import { ROOT, DIRS, ensureDirs } from "../config.js";
 import { log } from "../util/log.js";
-import { synth, piperReady } from "../util/piper.js";
+import { synth, piperReady, listVoices } from "../util/piper.js";
+import { CONFIG } from "../config.js";
 import { getTrends } from "../trends/index.js";
 import { listAccounts, addAccount, removeAccount } from "./accounts.js";
 import { setDouyinCookie, getDouyinCookie, cookieSource } from "./settings.js";
@@ -142,7 +143,9 @@ export function startServer(): void {
   // --- Render job (kem phu de da sua neu co) ---
   app.post("/api/jobs/:id/render", (req, res) => {
     try {
-      const job = renderJob(req.params.id, req.body?.segments);
+      const voice = req.body?.voice ? String(req.body.voice) : undefined;
+      const speed = Number(req.body?.speed) > 0 ? Number(req.body.speed) : undefined;
+      const job = renderJob(req.params.id, req.body?.segments, { voice, speed });
       res.json(job);
     } catch (e) {
       res.status(400).json({ error: (e as Error).message });
@@ -173,17 +176,25 @@ export function startServer(): void {
     });
   });
 
+  // --- Danh sach giong doc da cai + giong mac dinh ---
+  app.get("/api/voices", (_req, res) => {
+    res.json({ voices: listVoices(), default: CONFIG.PIPER_VOICE, defaultSpeed: CONFIG.DUB_SPEED });
+  });
+
   // --- Nghe thu 1 cau (synth Piper) — dung trong man duyet phu de ---
   app.post("/api/tts-preview", async (req, res) => {
     try {
       const text = String(req.body?.text ?? "").trim();
       if (!text) return res.status(400).json({ error: "Thieu text" });
       if (!piperReady()) return res.status(400).json({ error: "Piper chua san sang (chay npm run setup)" });
+      const voice = req.body?.voice ? String(req.body.voice) : undefined;
+      const speed = Number(req.body?.speed) > 0 ? Number(req.body.speed) : 1.0;
       const dir = path.join(DIRS.work, "_preview");
       fs.mkdirSync(dir, { recursive: true });
-      const hash = crypto.createHash("md5").update(text).digest("hex").slice(0, 12);
+      const key = `${voice ?? "def"}|${speed}|${text}`;
+      const hash = crypto.createHash("md5").update(key).digest("hex").slice(0, 12);
       const wav = path.join(dir, `${hash}.wav`);
-      if (!fs.existsSync(wav)) await synth(text, wav);
+      if (!fs.existsSync(wav)) await synth(text, wav, { voice, lengthScale: 1 / speed });
       res.json({ url: `/work/_preview/${hash}.wav` });
     } catch (e) {
       res.status(500).json({ error: (e as Error).message });

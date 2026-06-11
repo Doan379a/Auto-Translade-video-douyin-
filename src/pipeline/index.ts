@@ -99,12 +99,20 @@ export async function prepareVideo(
 }
 
 // PHA 2: phu de + long tieng + ghep. Nhan segments (co the da duoc user sua).
+// opts: chon giong doc + toc do (doi tung video tren web).
+export interface RenderOptions {
+  voice?: string;
+  speed?: number;
+}
 export async function renderVideo(
   awemeId: string,
   segments: Segment[],
-  onProgress: OnProgress = noop
+  onProgress: OnProgress = noop,
+  opts: RenderOptions = {}
 ): Promise<DubResult> {
   ensureDirs();
+  const voice = opts.voice || CONFIG.PIPER_VOICE;
+  const speed = opts.speed && opts.speed > 0 ? opts.speed : CONFIG.DUB_SPEED;
   const workDir = path.join(DIRS.work, awemeId);
   const sourceVideo = path.join(workDir, "source.mp4");
   if (!fs.existsSync(sourceVideo)) {
@@ -129,7 +137,10 @@ export async function renderVideo(
   onProgress({ stage: "tts" });
   const hash = crypto
     .createHash("md5")
-    .update(`dubv3|tempo=${CONFIG.DUB_MAX_TEMPO}|` + segments.map((s) => s.translated ?? "").join("\n"))
+    .update(
+      `dubv3|tempo=${CONFIG.DUB_MAX_TEMPO}|voice=${voice}|speed=${speed}|` +
+        segments.map((s) => s.translated ?? "").join("\n")
+    )
     .digest("hex")
     .slice(0, 10);
   const dubCache = path.join(workDir, `dub.${hash}.wav`);
@@ -138,8 +149,11 @@ export async function renderVideo(
     log.ok("Dung lai track long tieng da cache");
     dubWav = dubCache;
   } else {
-    const w = await synthDubTrack(segments, workDir, (done, total) =>
-      onProgress({ stage: "tts", done, total })
+    const w = await synthDubTrack(
+      segments,
+      workDir,
+      (done, total) => onProgress({ stage: "tts", done, total }),
+      { voice, speed }
     );
     if (w) {
       fs.renameSync(w, dubCache);

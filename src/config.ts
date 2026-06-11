@@ -39,6 +39,8 @@ const EnvSchema = z.object({
   TARGET_LANG: z.string().default("vi"),
   WHISPER_MODEL: z.string().default("Xenova/whisper-small"),
   PIPER_VOICE: z.string().default("vi_VN-vais1000-medium"),
+  // Toc do doc mac dinh (1.0 = thuong, >1 nhanh hon, <1 cham hon). Doi duoc tung video tren web.
+  DUB_SPEED: z.coerce.number().default(1.0),
 
   // --- Phu de ---
   // Co nen den om sat chu phu de dich (BorderStyle=3): "true" | "false"

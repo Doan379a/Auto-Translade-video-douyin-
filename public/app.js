@@ -369,6 +369,29 @@ async function deleteJobs(ids, label) {
 $("#editorClose").addEventListener("click", closeEditor);
 $("#saveSegBtn").addEventListener("click", () => saveSegments(false));
 $("#renderBtn").addEventListener("click", () => saveSegments(true));
+$("#speedRange").addEventListener("input", (e) => {
+  $("#speedVal").textContent = Number(e.target.value).toFixed(2) + "×";
+});
+
+// Nap danh sach giong doc vao dropdown.
+async function loadVoices() {
+  try {
+    const d = await fetch("/api/voices").then((r) => r.json());
+    const sel = $("#voiceSel");
+    sel.innerHTML = "";
+    (d.voices || []).forEach((v) => {
+      const o = document.createElement("option");
+      o.value = v;
+      o.textContent = v.replace(/^vi_VN-/, "").replace(/^[a-z]{2}_[A-Z]{2}-/, ""); // gon ten
+      if (v === d.default) o.selected = true;
+      sel.appendChild(o);
+    });
+    if (d.defaultSpeed) {
+      $("#speedRange").value = d.defaultSpeed;
+      $("#speedVal").textContent = Number(d.defaultSpeed).toFixed(2) + "×";
+    }
+  } catch { /* bo qua */ }
+}
 
 let editorTimes = []; // [{start,end}] de dong bo phu de theo video
 
@@ -438,7 +461,7 @@ async function previewLine(i, btn) {
   try {
     const res = await fetch("/api/tts-preview", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, voice: $("#voiceSel").value, speed: Number($("#speedRange").value) }),
     });
     const d = await res.json();
     if (!res.ok) throw new Error(d.error || "Lỗi");
@@ -474,7 +497,7 @@ async function saveSegments(thenRender) {
   if (thenRender) {
     await fetch(`/api/jobs/${id}/render`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ segments }),
+      body: JSON.stringify({ segments, voice: $("#voiceSel").value, speed: Number($("#speedRange").value) }),
     });
     closeEditor();
     switchTab("jobs");
@@ -513,4 +536,5 @@ $("#delSelBtn").addEventListener("click", () => deleteJobs([...selectedJobs]));
 loadJobs();
 loadAccounts();
 loadSettings();
+loadVoices();
 connectSSE();
