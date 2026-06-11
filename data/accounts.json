@@ -1,6 +1,7 @@
 {
-  "_comment": "Danh sach kenh Douyin de keo video moi nhat lam nguon trend. Sua tu do. Moi muc: name + url (link trang ca nhan Douyin). Co the dung 'secUserId' truc tiep neu da biet de bo qua buoc resolve.",
+  "_comment": "Danh sach kenh Douyin de keo video moi nhat lam nguon trend. Them kenh ban quan tam vao day. Moi muc co 'url' (link trang ca nhan) HOAC 'secUserId' (neu da biet).",
   "accounts": [
-    { "name": "Ví dụ - thay bằng kênh bạn theo dõi", "url": "https://www.douyin.com/user/MS4wLjABAAAA-EXAMPLE-REPLACE-ME" }
+    { "name": "菠萝漫漫 (anime/熊出没)", "secUserId": "MS4wLjABAAAAUWIuLIN0-lmjAbDFucZTIS9ikiZO8ORxh8SIG6HegY3h5VDymDMUoRF0Pfj4vgH3" },
+    { "name": "海岛小爬菜 (赶海)", "secUserId": "MS4wLjABAAAAeRbRWRWru7IIlwdFmkzGFxWTtAZ-iN4lgoZrxSHGdN8" }
   ]
 }

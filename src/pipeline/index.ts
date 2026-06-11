@@ -1,4 +1,6 @@
-// Orchestrator: long tieng + sub 1 video tu link Douyin, end-to-end.
+// Orchestrator: tach 2 pha de web co the chen buoc DUYET/SUA phu de o giua.
+//   prepareVideo: tai -> chep loi -> dich   (ra segments de duyet)
+//   renderVideo : phu de -> long tieng -> ghep (sau khi user da sua)
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -6,19 +8,32 @@ import { CONFIG, DIRS, ensureDirs } from "../config.js";
 import { log } from "../util/log.js";
 import { downloadVideo } from "./download.js";
 import { transcribe } from "./transcribe.js";
+import { mergeSegments } from "./merge.js";
 import { translateSegments } from "./translate.js";
+
+// Doi khi sua logic (gop doan...) -> tang de bo cache cu khong con dung.
+const PIPE_VERSION = "v2";
 import { buildSrt } from "./subtitle.js";
 import { synthDubTrack } from "./tts.js";
+import { separateBgm } from "./bgm.js";
+import { generateMetadata } from "./metadata.js";
 import { mux } from "./mux.js";
 import type { DubResult, Segment } from "./types.js";
 
-function deriveId(url: string): string {
+// Callback bao tien do cho web (SSE).
+export interface Progress {
+  stage: string; // download | transcribe | translate | subtitle | bgm | tts | mux | metadata
+  done?: number; // so muc da xong (vd cau da dich)
+  total?: number; // tong so muc
+}
+export type OnProgress = (p: Progress) => void;
+const noop: OnProgress = () => {};
+
+export function deriveId(url: string): string {
   const m = url.match(/(\d{8,})/);
-  // Id on dinh theo url -> chay lai dung lai work dir & cache (resumable)
   return m ? m[1] : `vid_${crypto.createHash("md5").update(url).digest("hex").slice(0, 12)}`;
 }
 
-// Doc cache JSON neu co.
 function readCache<T>(file: string): T | null {
   try {
     return JSON.parse(fs.readFileSync(file, "utf8")) as T;
@@ -27,17 +42,34 @@ function readCache<T>(file: string): T | null {
   }
 }
 
-export async function dubVideo(url: string): Promise<DubResult> {
+function translateCacheKey(): string {
+  return CONFIG.TRANSLATE_ENGINE === "ollama"
+    ? `ollama.${CONFIG.OLLAMA_MODEL.replace(/[^a-z0-9]+/gi, "_")}`
+    : CONFIG.TRANSLATE_ENGINE;
+}
+
+export interface PreparedVideo {
+  awemeId: string;
+  workDir: string;
+  sourceVideo: string;
+  segments: Segment[];
+}
+
+// PHA 1: tai + chep loi + dich. Tat ca deu cache de chay lai nhanh.
+export async function prepareVideo(
+  url: string,
+  onProgress: OnProgress = noop
+): Promise<PreparedVideo> {
   ensureDirs();
   const awemeId = deriveId(url);
   const workDir = path.join(DIRS.work, awemeId);
   fs.mkdirSync(workDir, { recursive: true });
-  log.info(`=== Bat dau xu ly video ${awemeId} ===`);
+  log.info(`=== Chuan bi video ${awemeId} ===`);
 
-  // 1. Tai
+  onProgress({ stage: "download" });
   const sourceVideo = await downloadVideo(url, workDir);
 
-  // 2. Chep loi (ASR) - cache lai de chay lai khoi nghe lai
+  onProgress({ stage: "transcribe" });
   const transcriptCache = path.join(workDir, "transcript.json");
   let rawSegments = readCache<Segment[]>(transcriptCache);
   if (rawSegments) {
@@ -46,35 +78,101 @@ export async function dubVideo(url: string): Promise<DubResult> {
     rawSegments = await transcribe(sourceVideo);
     fs.writeFileSync(transcriptCache, JSON.stringify(rawSegments, null, 2));
   }
-  if (rawSegments.length === 0) {
-    log.warn("Khong nghe duoc loi noi nao (video co the khong co thoai).");
-  }
 
-  // 3. Dich - cache theo engine + model (doi engine/model khong dung lai cache cu)
-  const cacheKey =
-    CONFIG.TRANSLATE_ENGINE === "ollama"
-      ? `ollama.${CONFIG.OLLAMA_MODEL.replace(/[^a-z0-9]+/gi, "_")}`
-      : CONFIG.TRANSLATE_ENGINE;
-  const translateCache = path.join(workDir, `translated.${cacheKey}.json`);
+  // Gop cac doan vun -> dich co ngu canh hon, long tieng do bi chong
+  const mergedSegments = mergeSegments(rawSegments);
+  log.ok(`Gop doan: ${rawSegments.length} -> ${mergedSegments.length}`);
+
+  onProgress({ stage: "translate" });
+  const translateCache = path.join(workDir, `translated.${PIPE_VERSION}.${translateCacheKey()}.json`);
   let segments = readCache<Segment[]>(translateCache);
   if (segments) {
     log.ok(`Dung lai ban dich da cache (${segments.length} doan)`);
   } else {
-    segments = await translateSegments(rawSegments);
+    segments = await translateSegments(mergedSegments, (done, total) =>
+      onProgress({ stage: "translate", done, total })
+    );
     fs.writeFileSync(translateCache, JSON.stringify(segments, null, 2));
   }
 
-  // 4. Phu de
+  return { awemeId, workDir, sourceVideo, segments };
+}
+
+// PHA 2: phu de + long tieng + ghep. Nhan segments (co the da duoc user sua).
+export async function renderVideo(
+  awemeId: string,
+  segments: Segment[],
+  onProgress: OnProgress = noop
+): Promise<DubResult> {
+  ensureDirs();
+  const workDir = path.join(DIRS.work, awemeId);
+  const sourceVideo = path.join(workDir, "source.mp4");
+  if (!fs.existsSync(sourceVideo)) {
+    throw new Error(`Chua co video nguon cho ${awemeId} (can chuan bi truoc).`);
+  }
+
+  onProgress({ stage: "subtitle" });
   const srtPath = path.join(workDir, `${awemeId}.srt`);
   buildSrt(segments, srtPath);
 
-  // 5. Long tieng
-  const dubWav = await synthDubTrack(segments, workDir);
+  // Nhac nen: che do demucs thi tach giong/nhac truoc (cache trong workDir).
+  // Tach loi/chua cai demucs -> bgWav=null, mux tu fallback sang 'duck'.
+  let bgWav: string | null = null;
+  let bgMode = CONFIG.BGM_MODE;
+  if (bgMode === "demucs") {
+    onProgress({ stage: "bgm" });
+    bgWav = await separateBgm(sourceVideo, workDir);
+    if (!bgWav) bgMode = "duck";
+  }
 
-  // 6. Ghep -> output
+  // Long tieng: cache theo HASH noi dung ban dich + thuat toan -> sua phu de thi tu doc lai giong.
+  onProgress({ stage: "tts" });
+  const hash = crypto
+    .createHash("md5")
+    .update(`dubv3|tempo=${CONFIG.DUB_MAX_TEMPO}|` + segments.map((s) => s.translated ?? "").join("\n"))
+    .digest("hex")
+    .slice(0, 10);
+  const dubCache = path.join(workDir, `dub.${hash}.wav`);
+  let dubWav: string | null;
+  if (fs.existsSync(dubCache)) {
+    log.ok("Dung lai track long tieng da cache");
+    dubWav = dubCache;
+  } else {
+    const w = await synthDubTrack(segments, workDir, (done, total) =>
+      onProgress({ stage: "tts", done, total })
+    );
+    if (w) {
+      fs.renameSync(w, dubCache);
+      dubWav = dubCache;
+    } else {
+      dubWav = null;
+    }
+  }
+
+  onProgress({ stage: "mux" });
   const outPath = path.join(DIRS.output, `${awemeId}.mp4`);
-  await mux({ sourceVideo, dubWav, srtPath, workDir, outPath });
+  await mux({ sourceVideo, dubWav, bgWav, bgMode, srtPath, workDir, outPath });
+
+  // Metadata dang video (tieu de/mo ta/hashtag) -> output/<id>.meta.json
+  let metaPath: string | undefined;
+  if (CONFIG.GEN_METADATA === "true") {
+    onProgress({ stage: "metadata" });
+    try {
+      const meta = await generateMetadata(segments);
+      metaPath = path.join(DIRS.output, `${awemeId}.meta.json`);
+      fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));
+      log.ok(`Metadata: ${meta.title}`);
+    } catch (e) {
+      log.warn(`Bo qua metadata (${(e as Error).message})`);
+    }
+  }
 
   log.ok(`=== Hoan tat: ${outPath} ===`);
-  return { awemeId, videoPath: outPath, srtPath, segments };
+  return { awemeId, videoPath: outPath, srtPath, segments, metaPath };
+}
+
+// Tien ich CLI: chay ca 2 pha (khong duyet giua chung).
+export async function dubVideo(url: string, onProgress: OnProgress = noop): Promise<DubResult> {
+  const prepared = await prepareVideo(url, onProgress);
+  return renderVideo(prepared.awemeId, prepared.segments, onProgress);
 }

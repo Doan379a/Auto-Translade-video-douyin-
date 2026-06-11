@@ -5,19 +5,29 @@ import { getJson } from "../util/http.js";
 import { log } from "../util/log.js";
 import type { TrendVideo } from "./types.js";
 
-// Thu lan luot cac API base, tra ve ket qua dau tien thanh cong (fallback).
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Thu lan luot cac API base, co TU DONG THU LAI khi loi (vd 400 do Douyin chan
+// tan suat tam thoi) — chon giua cac vong de tu khoi, khoi can cookie moi.
 async function tryBases<T = any>(
   pathname: string,
   params: Record<string, string | number | boolean> = {},
-  timeoutMs = 30000
+  timeoutMs = 30000,
+  rounds = 3
 ): Promise<T> {
   let lastErr: Error | null = null;
-  for (const base of DOUYIN_API_BASES) {
-    try {
-      return await getJson<T>(base, pathname, params, timeoutMs);
-    } catch (e) {
-      lastErr = e as Error;
-      if (DOUYIN_API_BASES.length > 1) log.warn(`API ${base} loi: ${lastErr.message}`);
+  for (let round = 0; round < rounds; round++) {
+    for (const base of DOUYIN_API_BASES) {
+      try {
+        return await getJson<T>(base, pathname, params, timeoutMs);
+      } catch (e) {
+        lastErr = e as Error;
+      }
+    }
+    if (round < rounds - 1) {
+      const wait = 2000 * (round + 1); // 2s, 4s... gian cach tang dan
+      log.warn(`API loi (${lastErr?.message}). Cho ${wait / 1000}s roi thu lai (vong ${round + 2}/${rounds})...`);
+      await sleep(wait);
     }
   }
   throw lastErr ?? new Error("Khong co API base nao kha dung");
@@ -103,19 +113,23 @@ export async function getVideoData(url: string): Promise<any> {
 }
 
 // Trich xuat URL video khong watermark tu ket qua getVideoData (best-effort).
+// Cau truc Evil0ctal: data.video.{play_addr,download_addr,bit_rate[].play_addr}.url_list
 export function extractDownloadUrl(data: any): string | undefined {
-  const candidates = [
-    data?.video?.play_addr?.url_list,
-    data?.video?.download_addr?.url_list,
+  const v = data?.video ?? {};
+  const lists: any[] = [
+    v?.play_addr?.url_list,
+    v?.download_addr?.url_list,
+    ...((v?.bit_rate ?? []).map((b: any) => b?.play_addr?.url_list) ?? []),
     data?.video_data?.nwm_video_url_HQ,
     data?.video_data?.nwm_video_url,
   ];
-  for (const c of candidates) {
-    if (typeof c === "string" && c.startsWith("http")) return c;
-    if (Array.isArray(c)) {
-      const hit = c.find((u) => typeof u === "string" && u.startsWith("http"));
-      if (hit) return hit;
-    }
+  const urls: string[] = [];
+  for (const c of lists) {
+    if (typeof c === "string" && c.startsWith("http")) urls.push(c);
+    else if (Array.isArray(c)) urls.push(...c.filter((u) => typeof u === "string" && u.startsWith("http")));
   }
-  return undefined;
+  if (urls.length === 0) return undefined;
+  // Uu tien link CDN truc tiep (zjcdn/douyinvod/video/tos), tranh link can dieu huong.
+  const direct = urls.find((u) => /(zjcdn|douyinvod|\/video\/tos)/i.test(u));
+  return direct ?? urls[0];
 }

@@ -7,7 +7,7 @@ import os from "node:os";
 import { spawnSync } from "node:child_process";
 import { pipeline as streamPipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
-import { CONFIG, DIRS, ensureDirs } from "../src/config.js";
+import { CONFIG, DIRS, ROOT, ensureDirs } from "../src/config.js";
 
 const PIPER_VERSION = "2023.11.14-2";
 
@@ -85,11 +85,68 @@ async function setupVoice(): Promise<void> {
   console.log("✓ Giong san sang.");
 }
 
+// Tim python tren he thong (de tao venv cho API Douyin).
+function findPython(): string | null {
+  for (const cmd of ["python", "python3", "py"]) {
+    const r = spawnSync(cmd, ["--version"], { encoding: "utf8" });
+    if (r.status === 0) return cmd;
+  }
+  return null;
+}
+
+// Provision API Douyin self-host: clone repo + venv + cai deps (Python 3.13 OK).
+// Giup tai video Douyin on dinh ma KHONG can cookies.
+async function setupDouyinApi(): Promise<void> {
+  const apiDir = path.join(DIRS.vendor, "douyin-api");
+  const venvPy =
+    os.platform() === "win32"
+      ? path.join(apiDir, ".venv", "Scripts", "python.exe")
+      : path.join(apiDir, ".venv", "bin", "python");
+  const reqFile = path.join(ROOT, "scripts", "douyin-api-requirements.txt");
+
+  if (fs.existsSync(venvPy) && fs.existsSync(path.join(apiDir, "app", "main.py"))) {
+    console.log("✓ API Douyin self-host da co, bo qua.");
+    return;
+  }
+
+  const py = findPython();
+  if (!py) {
+    console.log("! Khong tim thay Python. Cai Python 3.10+ roi chay lai `npm run setup` de co API Douyin.");
+    return;
+  }
+
+  console.log("• Cai API Douyin self-host (Evil0ctal) — tai video khong can cookies");
+  // 1. Clone (neu chua co)
+  if (!fs.existsSync(path.join(apiDir, "app", "main.py"))) {
+    fs.mkdirSync(DIRS.vendor, { recursive: true });
+    console.log("  clone repo...");
+    const r = spawnSync(
+      "git",
+      ["clone", "--depth", "1", "https://github.com/Evil0ctal/Douyin_TikTok_Download_API", apiDir],
+      { stdio: "inherit" }
+    );
+    if (r.status !== 0) { console.log("! Clone that bai (can git)."); return; }
+  }
+  // 2. venv
+  if (!fs.existsSync(venvPy)) {
+    console.log("  tao venv...");
+    const r = spawnSync(py, ["-m", "venv", path.join(apiDir, ".venv")], { stdio: "inherit" });
+    if (r.status !== 0) { console.log("! Tao venv that bai."); return; }
+  }
+  // 3. pip install (bo deps da chinh cho Python 3.13)
+  console.log("  cai thu vien Python (vai phut)...");
+  spawnSync(venvPy, ["-m", "pip", "install", "--upgrade", "pip"], { stdio: "ignore" });
+  const r = spawnSync(venvPy, ["-m", "pip", "install", "-r", reqFile], { stdio: "inherit" });
+  if (r.status !== 0) { console.log("! pip install that bai."); return; }
+  console.log("✓ API Douyin san sang (server se tu bat khi `npm run web`).");
+}
+
 async function main(): Promise<void> {
   ensureDirs();
   console.log("=== SETUP: tai binary + giong (clone-and-run) ===\n");
   await setupPiper();
   await setupVoice();
+  await setupDouyinApi();
 
   console.log("\n--- Buoc cai tay con lai (1 lan) ---");
   if (CONFIG.TRANSLATE_ENGINE === "ollama") {

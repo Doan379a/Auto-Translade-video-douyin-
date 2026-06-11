@@ -11,4 +11,5 @@ export interface DubResult {
   videoPath: string; // file mp4 ket qua
   srtPath: string; // file phu de
   segments: Segment[];
+  metaPath?: string; // file metadata (tieu de/mo ta/hashtag), neu co
 }

@@ -79,6 +79,21 @@ async function cmdDoctor(): Promise<void> {
     DIRS.models + " (whisper se tai vao day)",
   ]);
 
+  // Nhac nen: che do demucs can python + demucs.
+  if (CONFIG.BGM_MODE === "demucs") {
+    const { checkDemucs } = await import("./pipeline/bgm.js");
+    const ok = await checkDemucs();
+    checks.push([
+      "demucs (tach nhac nen)",
+      ok,
+      ok
+        ? `co (${CONFIG.DEMUCS_PYTHON})`
+        : `THIEU: ${CONFIG.DEMUCS_PYTHON} -m demucs (pip install demucs). Se fallback 'duck'.`,
+    ]);
+  } else {
+    checks.push(["nhac nen", true, `mode=${CONFIG.BGM_MODE}`]);
+  }
+
   // Ollama (chi khi dung engine ollama)
   if (CONFIG.TRANSLATE_ENGINE === "ollama") {
     let ok = false;
@@ -117,10 +132,48 @@ async function cmdDoctor(): Promise<void> {
   );
 }
 
+// Don dep file tam. `npm run clean` xoa work/. Them `-- --all` xoa luon output/.
+function dirSize(dir: string): number {
+  let total = 0;
+  if (!fs.existsSync(dir)) return 0;
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    total += e.isDirectory() ? dirSize(p) : fs.statSync(p).size;
+  }
+  return total;
+}
+const mb = (b: number) => (b / 1e6).toFixed(0) + " MB";
+
+async function cmdClean(): Promise<void> {
+  const all = process.argv.includes("--all");
+  const freed = dirSize(DIRS.work);
+  let n = 0;
+  if (fs.existsSync(DIRS.work)) {
+    for (const d of fs.readdirSync(DIRS.work)) {
+      fs.rmSync(path.join(DIRS.work, d), { recursive: true, force: true });
+      n++;
+    }
+  }
+  log.ok(`Da xoa ${n} thu muc tam trong work/ (~${mb(freed)})`);
+  if (all) {
+    const out = dirSize(DIRS.output);
+    let m = 0;
+    if (fs.existsSync(DIRS.output)) {
+      for (const f of fs.readdirSync(DIRS.output)) {
+        fs.rmSync(path.join(DIRS.output, f), { force: true });
+        m++;
+      }
+    }
+    log.ok(`Da xoa ${m} video trong output/ (~${mb(out)})`);
+  } else {
+    log.info("Giu video trong output/. Muon xoa luon: npm run clean -- --all");
+  }
+}
+
 const cmd = process.argv[2];
-const run = { trends: cmdTrends, dub: cmdDub, doctor: cmdDoctor }[cmd ?? ""];
+const run = { trends: cmdTrends, dub: cmdDub, doctor: cmdDoctor, clean: cmdClean }[cmd ?? ""];
 if (!run) {
-  console.log("Lenh: trends | dub <url|#> | doctor");
+  console.log("Lenh: trends | dub <url|#> | doctor | clean [--all]");
   process.exit(1);
 }
 run().catch((e) => {

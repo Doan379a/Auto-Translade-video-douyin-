@@ -32,7 +32,7 @@ async function translateFree(text: string): Promise<string> {
 }
 
 // Goi 1 LLM (chat) tra ve text, theo engine cau hinh.
-async function callLLM(system: string, user: string): Promise<string> {
+export async function callLLM(system: string, user: string): Promise<string> {
   if (CONFIG.TRANSLATE_ENGINE === "ollama") {
     const ollama = new Ollama({ host: CONFIG.OLLAMA_HOST });
     const res = await ollama.chat({
@@ -81,8 +81,13 @@ async function translateOne(text: string): Promise<string> {
 }
 
 // Dich tat ca cac doan. Batch theo dau [[n]] de it goi LLM; sai so thi fallback tung doan.
-export async function translateSegments(segments: Segment[]): Promise<Segment[]> {
+export type TranslateProgress = (done: number, total: number) => void;
+export async function translateSegments(
+  segments: Segment[],
+  onProgress?: TranslateProgress
+): Promise<Segment[]> {
   if (segments.length === 0) return segments;
+  const total = segments.length;
   log.step(
     `Dich ${segments.length} doan: ${langLabel(CONFIG.SOURCE_LANG)} → ${langLabel(
       CONFIG.TARGET_LANG
@@ -98,6 +103,7 @@ export async function translateSegments(segments: Segment[]): Promise<Segment[]>
         log.warn(`Doan ${i + 1} dich loi (${(e as Error).message}), giu nguyen goc`);
         segments[i].translated = segments[i].text;
       }
+      onProgress?.(i + 1, total);
     }
     log.ok("Dich xong (free)");
     return segments;
@@ -132,7 +138,9 @@ export async function translateSegments(segments: Segment[]): Promise<Segment[]>
       log.warn(`Lo ${start}-${start + chunk.length} loi (${(e as Error).message}), dich tung doan...`);
       for (const s of chunk) s.translated = await translateOne(s.text);
     }
-    log.step(`Dich ${Math.min(start + CHUNK, segments.length)}/${segments.length}`);
+    const done = Math.min(start + CHUNK, total);
+    log.step(`Dich ${done}/${total}`);
+    onProgress?.(done, total);
   }
   log.ok("Dich xong");
   return segments;

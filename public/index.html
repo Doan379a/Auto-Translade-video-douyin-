@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>trend-dub — Douyin lồng tiếng + sub</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <h1>🎬 trend-dub</h1>
+    <nav>
+      <button class="tab active" data-tab="trends">Trend</button>
+      <button class="tab" data-tab="jobs">Hàng đợi <span id="jobCount" class="badge">0</span></button>
+    </nav>
+  </header>
+
+  <!-- TAB TRENDS -->
+  <section id="tab-trends" class="tab-panel active">
+    <div class="toolbar">
+      <input id="linkInput" type="text" placeholder="Dán link Douyin (https://v.douyin.com/...) rồi Enter" />
+      <button id="addLinkBtn">+ Thêm link</button>
+      <span class="spacer"></span>
+      <button id="scanBtn">⟳ Quét trend</button>
+      <button id="processBtn" disabled>Xử lý đã chọn (<span id="selCount">0</span>)</button>
+    </div>
+    <div id="trendStatus" class="hint"></div>
+    <div id="trendGrid" class="grid"></div>
+  </section>
+
+  <!-- TAB JOBS -->
+  <section id="tab-jobs" class="tab-panel">
+    <div class="toolbar">
+      <button id="delSelBtn" class="danger" disabled>🗑 Gỡ đã chọn (<span id="jobSelCount">0</span>)</button>
+      <span class="hint" style="margin:0">Tick ô vuông ở mỗi job để chọn nhiều, hoặc bấm 🗑 trên từng job.</span>
+    </div>
+    <div id="jobList" class="job-list"></div>
+    <div id="jobEmpty" class="hint">Chưa có job nào. Sang tab Trend để chọn video.</div>
+  </section>
+
+  <!-- MODAL SUA PHU DE -->
+  <div id="editorModal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>Duyệt & sửa phụ đề — <span id="editorTitle"></span></h3>
+        <button id="editorClose">✕</button>
+      </div>
+      <div class="modal-hint">Sửa cột "Tiếng Việt" cho chuẩn rồi bấm Render. Cột trái là tiếng gốc.</div>
+      <div id="segEditor" class="seg-editor"></div>
+      <div class="modal-foot">
+        <button id="saveSegBtn" class="secondary">Lưu nháp</button>
+        <button id="renderBtn" class="primary">▶ Render video</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
