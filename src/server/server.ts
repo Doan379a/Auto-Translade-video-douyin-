@@ -61,7 +61,8 @@ export function startServer(): void {
   app.get("/api/trends", async (req, res) => {
     try {
       const limit = Number(req.query.limit) || 20;
-      const vids = await getTrends(limit);
+      const source = req.query.source ? String(req.query.source) : undefined;
+      const vids = await getTrends(limit, source);
       res.json(vids);
     } catch (e) {
       res.status(500).json({ error: (e as Error).message });

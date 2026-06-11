@@ -72,7 +72,11 @@ Mục tiêu: sửa phụ đề không còn "mù", giảm số lần render lại
 - [x] thumbnail.ts: trích khung hình (offline) + phủ tiêu đề nếu có font (best-effort, fallback khung hình trơn)
 - [x] render sinh output/<id>.jpg; Job.thumbUrl; dùng làm poster video + nút "⬇ Ảnh bìa"
 - [x] Test + commit (JPG có tiêu đề tiếng Việt, 720px)
-### #9 — Nguồn trend toàn sàn (TikHub trả phí)  `[ ]`
+### #9 — Nguồn trend toàn sàn (TikHub trả phí)  [x] XONG (hạ tầng)
+- [x] TREND_SOURCE config (account|tikhub); getTrends + /api/trends?source chọn nguồn
+- [x] TikHubTrendSource: gate bằng TIKHUB_API_KEY, URL cấu hình qua TIKHUB_TREND_URL, chuẩn hóa phòng thủ
+- [x] Test nhánh: thiếu key/nguồn sai báo lỗi rõ; account vẫn chạy
+- [!] LƯU Ý: lời gọi TikHub THẬT chưa verify được (cần key trả phí). Self-host API không có endpoint trend toàn sàn nên đây là đường duy nhất. Khi có key: đặt TIKHUB_API_KEY + TIKHUB_TREND_URL, chỉnh URL cho đúng gói; nếu response khác dạng, sửa normalize trong tikhubSource.ts.
 ### #10 — Nút tải .srt và .meta từ UI  [x] XONG
 - [x] render lưu .srt ra output/ (tải được kể cả sau khi dọn work/)
 - [x] Job có srtUrl; nút "⬇ SRT" + "⬇ Mô tả" cho video done; xóa kèm khi gỡ job
@@ -89,4 +93,7 @@ Mục tiêu: sửa phụ đề không còn "mù", giảm số lần render lại
 - 2026-06-11 — #6 Quản lý dung lượng từ web — 56724c4 — dọn work 1GB OK
 - 2026-06-11 — #10 Nút tải .srt + .meta — 5e631a4 — scan srtUrl + serve OK
 - 2026-06-11 — #7 Đa ngôn ngữ đầu ra — 77b7323 — zh→en/ja/ko OK
-- 2026-06-11 — #8 Tạo thumbnail / ảnh bìa — (commit kế tiếp) — JPG có tiêu đề OK
+- 2026-06-11 — #8 Tạo thumbnail / ảnh bìa — baec18a — JPG có tiêu đề OK
+- 2026-06-11 — #9 Nguồn trend toàn sàn (TikHub) — (commit kế tiếp) — hạ tầng OK, call thật cần key
+
+## Hoàn tất: toàn bộ #1–#10 đã xong (xem các mục trên).

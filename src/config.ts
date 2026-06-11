@@ -30,6 +30,11 @@ export function ensureDirs(): void {
 // --- Validate + parse bien moi truong ---
 const EnvSchema = z.object({
   DOUYIN_API_BASE: z.string().url().default("https://douyin.wtf"),
+  // Nguon trend: "account" (free, theo kenh trong accounts.json) | "tikhub" (toan san, TRA PHI)
+  TREND_SOURCE: z.enum(["account", "tikhub"]).default("account"),
+  // TikHub (tra phi) — trend toan san. Lay key tai https://tikhub.io. URL endpoint tuy goi/dich vu.
+  TIKHUB_API_KEY: z.string().default(""),
+  TIKHUB_TREND_URL: z.string().default(""),
   TRANSLATE_ENGINE: z.enum(["free", "ollama", "openai"]).default("free"),
   OLLAMA_HOST: z.string().url().default("http://127.0.0.1:11434"),
   OLLAMA_MODEL: z.string().default("aya-expanse:8b"),
