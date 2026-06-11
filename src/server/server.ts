@@ -1,8 +1,11 @@
 // Web server: phuc vu frontend, API trends/jobs, SSE tien do, va file video output.
+import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 import express from "express";
 import { ROOT, DIRS, ensureDirs } from "../config.js";
 import { log } from "../util/log.js";
+import { synth, piperReady } from "../util/piper.js";
 import { getTrends } from "../trends/index.js";
 import { DOUYIN_API_BASES } from "../config.js";
 import { checkCookieAlive } from "../trends/douyinApi.js";
@@ -184,8 +187,26 @@ export function startServer(): void {
     });
   });
 
-  // --- File tinh: video output + frontend ---
+  // --- Nghe thu 1 cau (synth Piper) — dung trong man duyet phu de ---
+  app.post("/api/tts-preview", async (req, res) => {
+    try {
+      const text = String(req.body?.text ?? "").trim();
+      if (!text) return res.status(400).json({ error: "Thieu text" });
+      if (!piperReady()) return res.status(400).json({ error: "Piper chua san sang (chay npm run setup)" });
+      const dir = path.join(DIRS.work, "_preview");
+      fs.mkdirSync(dir, { recursive: true });
+      const hash = crypto.createHash("md5").update(text).digest("hex").slice(0, 12);
+      const wav = path.join(dir, `${hash}.wav`);
+      if (!fs.existsSync(wav)) await synth(text, wav);
+      res.json({ url: `/work/_preview/${hash}.wav` });
+    } catch (e) {
+      res.status(500).json({ error: (e as Error).message });
+    }
+  });
+
+  // --- File tinh: video output + nguon (de xem truoc trong editor) + frontend ---
   app.use("/output", express.static(DIRS.output));
+  app.use("/work", express.static(DIRS.work)); // phuc vu work/<id>/source.mp4 + _preview
   app.use(express.static(path.join(ROOT, "public")));
 
   app.listen(PORT, async () => {

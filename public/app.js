@@ -362,25 +362,93 @@ $("#editorClose").addEventListener("click", closeEditor);
 $("#saveSegBtn").addEventListener("click", () => saveSegments(false));
 $("#renderBtn").addEventListener("click", () => saveSegments(true));
 
+let editorTimes = []; // [{start,end}] de dong bo phu de theo video
+
 function openEditor(id) {
   const job = jobs.get(id);
   if (!job || !job.segments) return;
   editorJobId = id;
+  editorTimes = job.segments.map((s) => ({ start: s.start, end: s.end }));
   $("#editorTitle").textContent = job.title.slice(0, 60);
   const box = $("#segEditor");
   box.innerHTML = "";
   job.segments.forEach((s, i) => {
     const row = document.createElement("div");
     row.className = "seg";
+    row.dataset.row = i;
     row.innerHTML = `
-      <div class="t">${s.start.toFixed(1)}s</div>
+      <div class="t">
+        <button class="seekbtn" data-t="${s.start}" title="Tới câu này">${s.start.toFixed(1)}s</button>
+        <button class="ttsbtn" data-i="${i}" title="Nghe thử giọng đọc">🔊</button>
+      </div>
       <div class="orig">${esc(s.text)}</div>
       <textarea data-i="${i}">${esc(s.translated || "")}</textarea>`;
     box.appendChild(row);
   });
+  // Su kien tua/nghe thu (uy quyen)
+  box.querySelectorAll(".seekbtn").forEach((b) =>
+    b.addEventListener("click", () => seekTo(Number(b.dataset.t)))
+  );
+  box.querySelectorAll(".ttsbtn").forEach((b) =>
+    b.addEventListener("click", () => previewLine(Number(b.dataset.i), b))
+  );
+
+  // Nap video nguon + dong bo phu de
+  const v = $("#previewVideo");
+  v.src = `/work/${id}/source.mp4`;
+  $("#previewSub").textContent = "";
+  v.ontimeupdate = syncSub; // gan = -> khong bi trung listener
   $("#editorModal").classList.remove("hidden");
 }
+
+function seekTo(t) {
+  const v = $("#previewVideo");
+  v.currentTime = Math.max(0, t);
+  v.play().catch(() => {});
+}
+
+function syncSub() {
+  const t = $("#previewVideo").currentTime;
+  let idx = -1;
+  for (let i = 0; i < editorTimes.length; i++) {
+    const e = editorTimes[i];
+    if (t >= e.start && t <= (e.end > e.start ? e.end : e.start + 3)) { idx = i; break; }
+  }
+  const ta = idx >= 0 ? $(`#segEditor textarea[data-i="${idx}"]`) : null;
+  $("#previewSub").textContent = ta ? ta.value : "";
+  $("#segEditor").querySelectorAll(".seg").forEach((r) =>
+    r.classList.toggle("playing", Number(r.dataset.row) === idx)
+  );
+}
+
+async function previewLine(i, btn) {
+  const ta = $(`#segEditor textarea[data-i="${i}"]`);
+  const text = (ta?.value || "").trim();
+  if (!text) return;
+  const old = btn.textContent;
+  btn.disabled = true; btn.textContent = "⏳";
+  try {
+    const res = await fetch("/api/tts-preview", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || "Lỗi");
+    await new Audio(d.url).play();
+  } catch (e) {
+    alert("Nghe thử lỗi: " + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = old;
+  }
+}
+
 function closeEditor() {
+  const v = $("#previewVideo");
+  v.pause();
+  v.ontimeupdate = null;
+  v.removeAttribute("src");
+  v.load();
+  $("#previewSub").textContent = "";
   $("#editorModal").classList.add("hidden");
   editorJobId = null;
 }

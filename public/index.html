@@ -70,7 +70,11 @@
         <h3>Duyệt & sửa phụ đề — <span id="editorTitle"></span></h3>
         <button id="editorClose">✕</button>
       </div>
-      <div class="modal-hint">Sửa cột "Tiếng Việt" cho chuẩn rồi bấm Render. Cột trái là tiếng gốc.</div>
+      <div class="modal-hint">Bấm ▶ trên video để xem; bấm mốc thời gian để tới câu; bấm 🔊 để nghe thử giọng đọc câu đó. Sửa cột "Tiếng Việt" rồi Render.</div>
+      <div id="editorPreview" class="editor-preview">
+        <video id="previewVideo" controls preload="metadata"></video>
+        <div id="previewSub" class="preview-sub"></div>
+      </div>
       <div id="segEditor" class="seg-editor"></div>
       <div class="modal-foot">
         <button id="saveSegBtn" class="secondary">Lưu nháp</button>
