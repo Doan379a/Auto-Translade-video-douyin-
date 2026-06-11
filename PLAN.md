@@ -44,10 +44,11 @@ Mục tiêu: sửa phụ đề không còn "mù", giảm số lần render lại
 
 ## 🟡 Nên có
 
-### #4 — Sửa timing + gộp/tách câu trong editor  `[ ]`
-- [ ] Sửa start/end mỗi câu
-- [ ] Gộp 2 câu / tách 1 câu
-- [ ] Test + commit
+### #4 — Sửa timing + gộp/tách câu trong editor  [x] XONG
+- [x] Sửa start/end mỗi câu (ô số trong editor, lưu vào editSegs)
+- [x] Gộp lên câu trên (⬆) / Tách 1 câu làm 2 (✂, chia text + thời gian)
+- [x] collectSegments dùng editSegs (sort theo thời gian); nghe thử/sub dùng editSegs
+- [x] Test + commit (node --check OK; logic mảng thuần)
 
 ### #5 — Bảo mật cookie + (tùy chọn) mật khẩu web  `[ ]`
 - [ ] Không trả full cookie khi request không phải localhost
@@ -73,4 +74,5 @@ Mục tiêu: sửa phụ đề không còn "mù", giảm số lần render lại
 ## Nhật ký
 - 2026-06-11 — #1 Preview video + nghe thử trong editor — fbf4941 — test API OK
 - 2026-06-11 — #2 Báo cookie hết hạn khi job tải lỗi — 8a19a37 — verify hàm check OK
-- 2026-06-11 — #3 Chọn giọng + tốc độ đọc — (commit kế tiếp) — test 2 giọng + tốc độ OK
+- 2026-06-11 — #3 Chọn giọng + tốc độ đọc — 39ff93f — test 2 giọng + tốc độ OK
+- 2026-06-11 — #4 Sửa timing + gộp/tách câu — (commit kế tiếp) — node --check OK

@@ -393,36 +393,15 @@ async function loadVoices() {
   } catch { /* bo qua */ }
 }
 
-let editorTimes = []; // [{start,end}] de dong bo phu de theo video
+let editSegs = []; // ban lam viec cua phu de (sua chu, timing, gop/tach)
 
 function openEditor(id) {
   const job = jobs.get(id);
   if (!job || !job.segments) return;
   editorJobId = id;
-  editorTimes = job.segments.map((s) => ({ start: s.start, end: s.end }));
+  editSegs = job.segments.map((s) => ({ ...s })); // ban sao de sua thoai mai
   $("#editorTitle").textContent = job.title.slice(0, 60);
-  const box = $("#segEditor");
-  box.innerHTML = "";
-  job.segments.forEach((s, i) => {
-    const row = document.createElement("div");
-    row.className = "seg";
-    row.dataset.row = i;
-    row.innerHTML = `
-      <div class="t">
-        <button class="seekbtn" data-t="${s.start}" title="Tới câu này">${s.start.toFixed(1)}s</button>
-        <button class="ttsbtn" data-i="${i}" title="Nghe thử giọng đọc">🔊</button>
-      </div>
-      <div class="orig">${esc(s.text)}</div>
-      <textarea data-i="${i}">${esc(s.translated || "")}</textarea>`;
-    box.appendChild(row);
-  });
-  // Su kien tua/nghe thu (uy quyen)
-  box.querySelectorAll(".seekbtn").forEach((b) =>
-    b.addEventListener("click", () => seekTo(Number(b.dataset.t)))
-  );
-  box.querySelectorAll(".ttsbtn").forEach((b) =>
-    b.addEventListener("click", () => previewLine(Number(b.dataset.i), b))
-  );
+  renderSegRows();
 
   // Nap video nguon + dong bo phu de
   const v = $("#previewVideo");
@@ -430,6 +409,86 @@ function openEditor(id) {
   $("#previewSub").textContent = "";
   v.ontimeupdate = syncSub; // gan = -> khong bi trung listener
   $("#editorModal").classList.remove("hidden");
+}
+
+// Ve lai toan bo hang tu editSegs (goi sau khi gop/tach).
+function renderSegRows() {
+  const box = $("#segEditor");
+  box.innerHTML = "";
+  editSegs.forEach((s, i) => {
+    const row = document.createElement("div");
+    row.className = "seg";
+    row.dataset.row = i;
+    row.innerHTML = `
+      <div class="t">
+        <input class="tnum" type="number" step="0.1" min="0" data-i="${i}" data-f="start" value="${(+s.start).toFixed(1)}" title="Bắt đầu (giây)" />
+        <input class="tnum" type="number" step="0.1" min="0" data-i="${i}" data-f="end" value="${(+s.end).toFixed(1)}" title="Kết thúc (giây)" />
+        <div class="rowbtns">
+          <button class="seekbtn" data-i="${i}" title="Phát từ đây">▶</button>
+          <button class="ttsbtn" data-i="${i}" title="Nghe thử">🔊</button>
+          <button class="splitbtn" data-i="${i}" title="Tách làm 2 câu">✂</button>
+          <button class="mergebtn" data-i="${i}" title="Gộp lên câu trên" ${i === 0 ? "disabled" : ""}>⬆</button>
+        </div>
+      </div>
+      <div class="orig">${esc(s.text)}</div>
+      <textarea data-i="${i}">${esc(s.translated || "")}</textarea>`;
+    box.appendChild(row);
+  });
+  // Wiring (luu thay doi vao editSegs ngay)
+  box.querySelectorAll("textarea").forEach((ta) =>
+    ta.addEventListener("input", () => { editSegs[+ta.dataset.i].translated = ta.value; })
+  );
+  box.querySelectorAll(".tnum").forEach((inp) =>
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      if (!Number.isNaN(v)) editSegs[+inp.dataset.i][inp.dataset.f] = v;
+    })
+  );
+  box.querySelectorAll(".seekbtn").forEach((b) =>
+    b.addEventListener("click", () => seekTo(editSegs[+b.dataset.i].start))
+  );
+  box.querySelectorAll(".ttsbtn").forEach((b) =>
+    b.addEventListener("click", () => previewLine(+b.dataset.i, b))
+  );
+  box.querySelectorAll(".splitbtn").forEach((b) =>
+    b.addEventListener("click", () => splitSeg(+b.dataset.i))
+  );
+  box.querySelectorAll(".mergebtn").forEach((b) =>
+    b.addEventListener("click", () => mergeSeg(+b.dataset.i))
+  );
+}
+
+// Tach 1 chuoi lam doi tai khoang trang gan giua nhat.
+function splitText(t) {
+  t = (t || "").trim();
+  if (!t) return ["", ""];
+  const mid = Math.floor(t.length / 2);
+  let sp = t.lastIndexOf(" ", mid);
+  if (sp <= 0) sp = t.indexOf(" ", mid);
+  if (sp <= 0) sp = mid;
+  return [t.slice(0, sp).trim(), t.slice(sp).trim()];
+}
+
+function splitSeg(i) {
+  const s = editSegs[i];
+  const mid = +(((+s.start) + (+s.end)) / 2).toFixed(2);
+  const [t1, t2] = splitText(s.text);
+  const [r1, r2] = splitText(s.translated);
+  editSegs.splice(i, 1,
+    { start: +s.start, end: mid, text: t1, translated: r1 },
+    { start: mid, end: +s.end, text: t2, translated: r2 }
+  );
+  renderSegRows();
+}
+
+function mergeSeg(i) {
+  if (i <= 0) return;
+  const prev = editSegs[i - 1], cur = editSegs[i];
+  prev.end = +cur.end;
+  prev.text = (prev.text + " " + cur.text).replace(/\s+/g, " ").trim();
+  prev.translated = ((prev.translated || "") + " " + (cur.translated || "")).replace(/\s+/g, " ").trim();
+  editSegs.splice(i, 1);
+  renderSegRows();
 }
 
 function seekTo(t) {
@@ -441,20 +500,18 @@ function seekTo(t) {
 function syncSub() {
   const t = $("#previewVideo").currentTime;
   let idx = -1;
-  for (let i = 0; i < editorTimes.length; i++) {
-    const e = editorTimes[i];
-    if (t >= e.start && t <= (e.end > e.start ? e.end : e.start + 3)) { idx = i; break; }
+  for (let i = 0; i < editSegs.length; i++) {
+    const s = editSegs[i];
+    if (t >= s.start && t <= (s.end > s.start ? s.end : s.start + 3)) { idx = i; break; }
   }
-  const ta = idx >= 0 ? $(`#segEditor textarea[data-i="${idx}"]`) : null;
-  $("#previewSub").textContent = ta ? ta.value : "";
+  $("#previewSub").textContent = idx >= 0 ? (editSegs[idx].translated || "") : "";
   $("#segEditor").querySelectorAll(".seg").forEach((r) =>
     r.classList.toggle("playing", Number(r.dataset.row) === idx)
   );
 }
 
 async function previewLine(i, btn) {
-  const ta = $(`#segEditor textarea[data-i="${i}"]`);
-  const text = (ta?.value || "").trim();
+  const text = (editSegs[i].translated || "").trim();
   if (!text) return;
   const old = btn.textContent;
   btn.disabled = true; btn.textContent = "⏳";
@@ -483,13 +540,12 @@ function closeEditor() {
   $("#editorModal").classList.add("hidden");
   editorJobId = null;
 }
+
+// Tra ve ban phu de hien tai (sap xep theo thoi gian de an toan).
 function collectSegments() {
-  const job = jobs.get(editorJobId);
-  const segs = job.segments.map((s) => ({ ...s }));
-  $("#segEditor").querySelectorAll("textarea").forEach((ta) => {
-    segs[Number(ta.dataset.i)].translated = ta.value;
-  });
-  return segs;
+  return editSegs
+    .map((s) => ({ start: +s.start, end: +s.end, text: s.text, translated: s.translated }))
+    .sort((a, b) => a.start - b.start);
 }
 async function saveSegments(thenRender) {
   const id = editorJobId;

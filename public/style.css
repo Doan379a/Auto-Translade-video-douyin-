@@ -117,9 +117,17 @@ button.danger:hover:not(:disabled) { border-color: var(--red); }
 .ttsbtn { padding: 2px 6px; font-size: 13px; background: transparent; border-color: transparent; }
 .ttsbtn:hover { border-color: var(--accent); }
 .seg {
-  display: grid; grid-template-columns: 56px 1fr 1fr; gap: 10px; align-items: start;
+  display: grid; grid-template-columns: 76px 1fr 1fr; gap: 10px; align-items: start;
   padding: 8px 0; border-bottom: 1px solid var(--line);
 }
+.seg .tnum {
+  width: 64px; min-width: 0; background: var(--panel2); color: var(--text);
+  border: 1px solid var(--line); border-radius: 5px; padding: 3px 5px; font-size: 11px; margin-bottom: 3px;
+}
+.rowbtns { display: flex; flex-wrap: wrap; gap: 2px; }
+.rowbtns button { padding: 2px 5px; font-size: 12px; background: transparent; border-color: transparent; }
+.rowbtns button:hover:not(:disabled) { border-color: var(--accent); }
+.splitbtn:hover:not(:disabled), .mergebtn:hover:not(:disabled) { border-color: var(--accent); }
 .seg .t { color: var(--muted); font-size: 11px; padding-top: 8px; }
 .seg .orig { color: var(--muted); font-size: 13px; padding-top: 7px; }
 .seg textarea {
