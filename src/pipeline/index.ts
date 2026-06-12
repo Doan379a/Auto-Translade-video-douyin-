@@ -6,6 +6,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { CONFIG, DIRS, ensureDirs } from "../config.js";
 import { log } from "../util/log.js";
+import { deriveId } from "../util/id.js";
 import { downloadVideo } from "./download.js";
 import { transcribe } from "./transcribe.js";
 import { mergeSegments } from "./merge.js";
@@ -30,10 +31,8 @@ export interface Progress {
 export type OnProgress = (p: Progress) => void;
 const noop: OnProgress = () => {};
 
-export function deriveId(url: string): string {
-  const m = url.match(/(\d{8,})/);
-  return m ? m[1] : `vid_${crypto.createHash("md5").update(url).digest("hex").slice(0, 12)}`;
-}
+// Re-export de cac module khac (jobs.ts) van import tu day nhu cu.
+export { deriveId };
 
 function readCache<T>(file: string): T | null {
   try {

@@ -4,9 +4,38 @@ const selected = new Map(); // key(shareUrl) -> {url, title}
 const jobs = new Map(); // id -> job
 const selectedJobs = new Set(); // id cac job duoc tick de go
 let editorJobId = null;
+let jobSort = "new"; // new | old (sap xep theo ngay tao)
+let jobDurFilter = "all"; // all | 0-15 | 15-30 | 30-60 | 60- (loc theo do dai video)
 
 const $ = (s) => document.querySelector(s);
 const fmt = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "K" : "" + n);
+
+// Do dai video (giay) suy tu moc ket thuc cua cau cuoi; null neu chua co phu de.
+function jobDuration(j) {
+  if (!j.segments || !j.segments.length) return null;
+  let max = 0;
+  for (const s of j.segments) { const e = +s.end; if (e > max) max = e; }
+  return max || null;
+}
+const fmtDur = (sec) => {
+  if (sec == null) return "";
+  const m = Math.floor(sec / 60), s = Math.round(sec % 60);
+  return m ? `${m}p${String(s).padStart(2, "0")}` : `${s}s`;
+};
+const fmtDate = (ts) => {
+  try { return new Date(ts).toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }); }
+  catch { return ""; }
+};
+// Job co lot qua bo loc do dai khong. Job chua biet do dai chi hien khi loc = "all".
+function passDurFilter(j) {
+  if (jobDurFilter === "all") return true;
+  const d = jobDuration(j);
+  if (d == null) return false;
+  const [lo, hi] = jobDurFilter.split("-");
+  if (d < Number(lo)) return false;
+  if (hi && d >= Number(hi)) return false;
+  return true;
+}
 const esc = (s) => (s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 const STAGE_VI = {
@@ -271,14 +300,37 @@ async function loadJobs() {
 
 function renderJobs() {
   const list = $("#jobList");
-  const arr = [...jobs.values()].sort((a, b) => b.createdAt - a.createdAt);
-  $("#jobCount").textContent = arr.length;
-  $("#jobEmpty").style.display = arr.length ? "none" : "block";
+  const all = [...jobs.values()];
+  // Loc theo do dai roi sap xep theo ngay tao (moi/cu).
+  const arr = all
+    .filter(passDurFilter)
+    .sort((a, b) => (jobSort === "old" ? a.createdAt - b.createdAt : b.createdAt - a.createdAt));
+  $("#jobCount").textContent = all.length;
+  // Don selectedJobs ve cac job dang hien thi (tranh "go da chon" cham job da bi loc/xoa).
+  const visibleIds = new Set(arr.map((j) => j.id));
+  for (const id of [...selectedJobs]) if (!visibleIds.has(id)) selectedJobs.delete(id);
+  const empty = arr.length === 0;
+  $("#jobEmpty").style.display = empty ? "block" : "none";
+  $("#jobEmpty").textContent = all.length === 0
+    ? "Chưa có job nào. Sang tab Trend để chọn video."
+    : "Không có video nào khớp bộ lọc độ dài.";
   list.innerHTML = "";
   arr.forEach((j) => list.appendChild(jobCard(j)));
-  // Cap nhat nut "Go da chon"
+  refreshSelUI();
+}
+
+// Dong bo cac nut chon: so da chon, nut "Go da chon", checkbox "chon tat ca".
+function refreshSelUI() {
+  const visible = [...jobs.values()].filter(passDurFilter);
   $("#jobSelCount").textContent = selectedJobs.size;
   $("#delSelBtn").disabled = selectedJobs.size === 0;
+  const selAll = $("#selAllChk");
+  if (selAll) {
+    const selVisible = visible.filter((j) => selectedJobs.has(j.id)).length;
+    selAll.checked = visible.length > 0 && selVisible === visible.length;
+    selAll.indeterminate = selVisible > 0 && selVisible < visible.length;
+    selAll.disabled = visible.length === 0;
+  }
 }
 
 function jobCard(j) {
@@ -296,6 +348,7 @@ function jobCard(j) {
   } else if (j.status === "preparing" || j.status === "rendering") {
     bar = `<div class="bar"><div class="bar-fill indet"></div></div>`;
   }
+  const dur = fmtDur(jobDuration(j));
 
   let right = "";
   if (j.status === "review") right = `<button class="primary" data-act="edit">Duyệt & sửa phụ đề</button>`;
@@ -312,7 +365,7 @@ function jobCard(j) {
     <input type="checkbox" class="jobchk" ${selectedJobs.has(j.id) ? "checked" : ""} title="Chọn để gỡ" />
     <div class="info">
       <div class="title">${esc(j.title)}</div>
-      <div class="sub">${esc(detail)}${j.segments ? " · " + j.segments.length + " câu" : ""}</div>
+      <div class="sub">${esc(detail)}${j.segments ? " · " + j.segments.length + " câu" : ""}${dur ? " · ⏱ " + dur : ""}${j.createdAt ? " · 🗓 " + fmtDate(j.createdAt) : ""}</div>
       ${bar}
     </div>
     <span class="status ${j.status}">${STATUS_VI[j.status] || j.status}</span>
@@ -321,8 +374,7 @@ function jobCard(j) {
   el.querySelector(".jobchk").addEventListener("change", (e) => {
     if (e.target.checked) selectedJobs.add(j.id);
     else selectedJobs.delete(j.id);
-    $("#jobSelCount").textContent = selectedJobs.size;
-    $("#delSelBtn").disabled = selectedJobs.size === 0;
+    refreshSelUI();
   });
   const editBtn = el.querySelector('[data-act="edit"]');
   if (editBtn) editBtn.addEventListener("click", () => openEditor(j.id));
@@ -593,8 +645,18 @@ function connectSSE() {
   es.onerror = () => { /* tu dong reconnect */ };
 }
 
-// ====== Nut "Go da chon" ======
+// ====== Nut "Go da chon" + chon tat ca + sap xep + loc do dai ======
 $("#delSelBtn").addEventListener("click", () => deleteJobs([...selectedJobs]));
+
+// Chon tat ca: tick = chon moi job DANG HIEN THI (sau loc); bo tick = bo chon chung.
+$("#selAllChk").addEventListener("change", (e) => {
+  const visible = [...jobs.values()].filter(passDurFilter);
+  if (e.target.checked) visible.forEach((j) => selectedJobs.add(j.id));
+  else visible.forEach((j) => selectedJobs.delete(j.id));
+  renderJobs();
+});
+$("#jobSortSel").addEventListener("change", (e) => { jobSort = e.target.value; renderJobs(); });
+$("#jobDurSel").addEventListener("change", (e) => { jobDurFilter = e.target.value; renderJobs(); });
 
 // ====== Dung luong ======
 $("#cleanBtn").addEventListener("click", doCleanStorage);

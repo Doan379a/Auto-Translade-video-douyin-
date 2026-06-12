@@ -65,8 +65,25 @@
   <!-- TAB JOBS -->
   <section id="tab-jobs" class="tab-panel">
     <div class="toolbar">
+      <label class="chk-all" title="Chọn / bỏ chọn tất cả video đang hiển thị">
+        <input type="checkbox" id="selAllChk" /> Chọn tất cả
+      </label>
       <button id="delSelBtn" class="danger" disabled>🗑 Gỡ đã chọn (<span id="jobSelCount">0</span>)</button>
-      <span class="hint" style="margin:0">Tick ô vuông ở mỗi job để chọn nhiều, hoặc bấm 🗑 trên từng job.</span>
+      <label class="voice-ctrl">↕ Sắp xếp
+        <select id="jobSortSel">
+          <option value="new" selected>Mới nhất trước</option>
+          <option value="old">Cũ nhất trước</option>
+        </select>
+      </label>
+      <label class="voice-ctrl">⏱ Độ dài
+        <select id="jobDurSel">
+          <option value="all" selected>Mọi độ dài</option>
+          <option value="0-15">Dưới 15 giây</option>
+          <option value="15-30">15 – 30 giây</option>
+          <option value="30-60">30 – 60 giây</option>
+          <option value="60-">Trên 60 giây</option>
+        </select>
+      </label>
       <span style="flex:1"></span>
       <span id="storageInfo" class="hint" style="margin:0">Dung lượng: …</span>
       <button id="cleanBtn" class="secondary">🧹 Dọn dung lượng</button>

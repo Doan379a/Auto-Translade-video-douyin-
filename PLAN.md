@@ -95,5 +95,6 @@ Mục tiêu: sửa phụ đề không còn "mù", giảm số lần render lại
 - 2026-06-11 — #7 Đa ngôn ngữ đầu ra — 77b7323 — zh→en/ja/ko OK
 - 2026-06-11 — #8 Tạo thumbnail / ảnh bìa — baec18a — JPG có tiêu đề OK
 - 2026-06-11 — #9 Nguồn trend toàn sàn (TikHub) — (commit kế tiếp) — hạ tầng OK, call thật cần key
+- 2026-06-12 — Siết chất lượng: sửa rò rỉ listener SSE (setMaxListeners 0); thêm test tự động (node:test cho mergeSegments/buildSrt/deriveId, tách util/id.ts, `npm test` 16/16); UI Hàng đợi: chọn tất cả + sắp xếp theo ngày + lọc theo độ dài + hiện độ dài/ngày tạo
 
 ## Hoàn tất: toàn bộ #1–#10 đã xong (xem các mục trên).

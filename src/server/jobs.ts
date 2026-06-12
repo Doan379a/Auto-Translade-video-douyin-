@@ -38,6 +38,9 @@ export interface Job {
 }
 
 export const jobEvents = new EventEmitter();
+// Moi ket noi SSE (/api/events) dang ky 2 listener; mac dinh EventEmitter gioi han 10
+// -> mo >5 tab se canh bao MaxListenersExceededWarning. Bo gioi han (0 = khong han che).
+jobEvents.setMaxListeners(0);
 const jobs = new Map<string, Job>();
 
 // --- Luu job ra dia de KHONG mat danh sach khi restart server ---
